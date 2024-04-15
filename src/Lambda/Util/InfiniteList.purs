@@ -1,5 +1,5 @@
 
-module Lambda.Monad.InfiniteList(
+module Lambda.Util.InfiniteList(
                           InfiniteList(),
                           cons, lazyCons,
                           repeat,

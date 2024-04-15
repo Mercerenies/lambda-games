@@ -5,9 +5,10 @@ module Lambda.Monad.Names(
                           askBindings
                          ) where
 
+import Lambda.Util.InfiniteList(InfiniteList)
+
 import Prelude
 import Data.List(List, (:))
-import Data.List.Lazy(List) as Lazy
 
 -- It's really just a very specialized form of the reader monad.
 newtype NamesT :: Type -> (Type -> Type) -> Type -> Type
@@ -29,8 +30,6 @@ instance Bind m => Bind (NamesT s m) where
                                      f' bindings
 
 instance Monad m => Monad (NamesT s m)
-
-type NameStream = Lazy.List
 
 withNameBound :: forall s m a. s -> NamesT s m a -> NamesT s m a
 withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
