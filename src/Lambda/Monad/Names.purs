@@ -1,19 +1,25 @@
 
 module Lambda.Monad.Names(
-                          NamesT,
+                          NamesT(), Names,
                           withNameBound, askBindings,
-                          freshStrings, withName
+                          freshStrings, withName,
+                          runNamesTWith, runNamesT,
+                          runNamesWith, runNames
                          ) where
 
 import Lambda.Util.InfiniteList(InfiniteList, unfoldrForever, cons, find)
 
 import Prelude
 import Data.Tuple(Tuple(..))
-import Data.List(List, (:), notElem)
+import Data.List(List(..), (:), notElem)
+import Data.Identity(Identity(..))
+import Safe.Coerce(coerce)
 
 -- It's really just a very specialized form of the reader monad.
 newtype NamesT :: Type -> (Type -> Type) -> Type -> Type
 newtype NamesT s m a = NamesT (List s -> m a)
+
+type Names s = NamesT s Identity
 
 instance Functor m => Functor (NamesT s m) where
     map f (NamesT g) = NamesT $ map f <<< g
@@ -49,3 +55,15 @@ withFreshName freshNameStream ma = do
 
 withName :: forall m a. Monad m => String -> NamesT String m a -> NamesT String m a
 withName baseName = withFreshName (freshStrings baseName)
+
+runNamesTWith :: forall s m a. Monad m => List s -> NamesT s m a -> m a
+runNamesTWith bindings (NamesT ma) = ma bindings
+
+runNamesT :: forall s m a. Monad m => NamesT s m a -> m a
+runNamesT = runNamesTWith Nil
+
+runNamesWith :: forall s a. List s -> Names s a -> a
+runNamesWith bindings = coerce <<< runNamesTWith bindings
+
+runNames :: forall s a. Names s a -> a
+runNames = coerce <<< runNamesT

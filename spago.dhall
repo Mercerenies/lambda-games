@@ -17,10 +17,12 @@ to generate this file without the comments in this block.
   , "either"
   , "exceptions"
   , "foldable-traversable"
+  , "identity"
   , "lazy"
   , "lists"
   , "maybe"
   , "prelude"
+  , "safe-coerce"
   , "tuples"
   ]
 , packages = ./packages.dhall
