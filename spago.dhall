@@ -23,6 +23,7 @@ to generate this file without the comments in this block.
   , "maybe"
   , "prelude"
   , "safe-coerce"
+  , "strings"
   , "tuples"
   ]
 , packages = ./packages.dhall

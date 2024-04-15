@@ -2,7 +2,8 @@
 module Lambda.Type(
                    TType(..),
                    substitute, freeVariables, isClosed,
-                   prettyShow
+                   prettyShow,
+                   suggestedVariableName
                   ) where
 
 import Lambda.Util(parenthesizeIf)
@@ -11,6 +12,7 @@ import Prelude
 import Data.List (List(..), delete, singleton, null)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
+import Data.String.Common (toLower)
 
 data TType = TVar String
            | TGround String
@@ -72,3 +74,19 @@ prettyShowPrec n (TContextArrow left right) =
 prettyShowPrec n (TForall v x) =
     let x' = prettyShowPrec forallPrecedence x in
     parenthesizeIf (n >= arrowLeftPrecedence) $ "∀" <> v <> ". " <> x'
+
+-- A helpful variable name for a variable of the given type. This is
+-- purely a heuristic meant to produce more user-friendly output.
+suggestedVariableName :: TType -> String
+suggestedVariableName (TVar s) = s
+suggestedVariableName (TGround s) = suggestedGroundVariableName s
+suggestedVariableName (TArrow _ _) = "f" -- short for "function"
+suggestedVariableName (TContextArrow _ rhs) = suggestedVariableName rhs
+suggestedVariableName (TForall _ t) = suggestedVariableName t
+
+suggestedGroundVariableName :: String -> String
+suggestedGroundVariableName "Int" = "n"
+suggestedGroundVariableName "Bool" = "b"
+suggestedGroundVariableName "Float" = "f"
+suggestedGroundVariableName "String" = "s"
+suggestedGroundVariableName s = toLower s
