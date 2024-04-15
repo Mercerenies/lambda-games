@@ -1,13 +1,14 @@
 
 module Lambda.Monad.Names(
                           NamesT,
-                          withNameBound,
-                          askBindings
+                          withNameBound, askBindings,
+                          freshStrings
                          ) where
 
-import Lambda.Util.InfiniteList(InfiniteList)
+import Lambda.Util.InfiniteList(InfiniteList, unfoldrForever, cons)
 
 import Prelude
+import Data.Tuple(Tuple(..))
 import Data.List(List, (:))
 
 -- It's really just a very specialized form of the reader monad.
@@ -37,8 +38,8 @@ withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
 askBindings :: forall s m. Applicative m => NamesT s m (List s)
 askBindings = NamesT pure
 
---freshStrings :: String -> NameStream String
---freshStrings 
+freshStrings :: String -> InfiniteList String
+freshStrings s = cons s $ unfoldrForever (\n -> Tuple (s <> "_" <> show n) (n + 1)) 0
 
 --withFreshName :: Monad m => NameStream s -> NamesT s m a -> NamesT s m a
 --withFreshName freshNameStream (NamesT ma) = 
