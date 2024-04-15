@@ -1,19 +1,23 @@
 
 module Lambda.Type.Relation(
                             Relation(..),
-                            relationify, relationifyWithBindings
+                            relationify, relationifyWithBindings,
+                            describeRelation, describeFreeTheorem
                            ) where
 
-import Lambda.Type(TType(..))
---import Lambda.Term(Term(..), prettyShow)
+import Lambda.Type (TType(..), suggestedVariableName)
+import Lambda.Type (prettyShow) as TType
+import Lambda.Monad.Names (NamesT, withName, withName2, runNamesT)
+import Lambda.Term (Term(..), prettyShow)
 
-import Data.Tuple(Tuple(..))
-import Data.Maybe(Maybe(..))
-import Data.List(List(..), (:))
-import Data.Foldable(lookup)
-import Data.Either(Either(..))
+import Data.Tuple (Tuple(..))
+import Data.Maybe (Maybe(..))
+import Data.List (List(..), (:))
+import Data.Foldable (lookup)
+import Data.Either (Either(..))
+import Control.Monad.Trans.Class (lift)
 import Prelude
-import Effect.Exception.Unsafe(unsafeThrow)
+import Effect.Exception.Unsafe (unsafeThrow)
 
 data Relation =
     -- The identity relation on a type, which is true if (and only if)
@@ -23,7 +27,9 @@ data Relation =
     -- to related elements.
     FunctionRelation { domainType :: TType, domainRelation :: Relation, codomainRelation :: Relation } |
     -- A relation that holds for all sub-relations.
-    ForallRelation { argumentName :: String, resultRelation :: Relation -> Either String Relation }
+    ForallRelation { argumentName :: String, resultRelation :: Relation -> Either String Relation } |
+    -- A quantified relation, written as a function for convenience.
+    QuantifiedVarRelation String
 
 -- Lift a closed type into a relation.
 relationify :: TType -> Either String Relation
@@ -49,8 +55,27 @@ relationifyWithBindings bindings (TForall x body) =
                  resultRelation: \r -> relationifyWithBindings ((Tuple x r) : bindings) body
                }
 
-{-
-describeRelation :: Relation -> Term -> Term -> Either String String
+describeRelation :: Relation -> Term -> Term -> NamesT String (Either String) String
 describeRelation (IdentityRelation _) left right =
-    Right $ prettyShow left <> " = " <> prettyShow right
--}
+    pure $ prettyShow left <> " = " <> prettyShow right
+describeRelation (FunctionRelation { domainType, domainRelation, codomainRelation }) left right =
+    withName2 (suggestedVariableName domainType) $ \a a' -> ado
+        domainDesc <- describeRelation domainRelation (Var a) (Var a')
+        codomainDesc <- describeRelation codomainRelation (App left (Var a)) (App right (Var a'))
+        in "∀ " <> a <> ", " <> a' <> " ∈ " <> TType.prettyShow domainType <>
+           " such that [" <> domainDesc <> "]: " <> codomainDesc
+describeRelation (ForallRelation { argumentName, resultRelation }) left right =
+    withName argumentName $ \r ->
+      withName2 "A" $ \a a' -> do
+        rightHandRelation <- lift $ resultRelation (QuantifiedVarRelation r)
+        rightHandDesc <- describeRelation rightHandRelation (TypeApp left (Var a)) (TypeApp right (Var a'))
+        pure $ "∀ " <> a <> ", " <> a' <> " ∈ Type: ∀ " <> r <> " ∈ (" <> a <> " → " <> a' <> "): " <>
+               rightHandDesc
+describeRelation (QuantifiedVarRelation r) left right =
+    pure $ prettyShow (App (Var r) left) <> " = " <> prettyShow right
+
+describeFreeTheorem :: TType -> Either String String
+describeFreeTheorem t = runNamesT do
+  r <- lift $ relationify t
+  withName (suggestedVariableName t) $ \a ->
+    describeRelation r (Var a) (Var a)

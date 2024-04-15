@@ -9,7 +9,7 @@ module Lambda.Type(
 import Lambda.Util(parenthesizeIf)
 
 import Prelude
-import Data.List (List(..), delete, singleton, null)
+import Data.List (List(..), singleton, null, filter, nub)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.String.Common (toLower)
@@ -38,9 +38,9 @@ substitute x t (TForall y t1) | x == y = TForall y t1
 freeVariables :: TType -> List String
 freeVariables (TVar x) = singleton x
 freeVariables (TGround _) = Nil
-freeVariables (TArrow t1 t2) = freeVariables t1 <> freeVariables t2
-freeVariables (TContextArrow t1 t2) = freeVariables t1 <> freeVariables t2
-freeVariables (TForall x t) = delete x $ freeVariables t
+freeVariables (TArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
+freeVariables (TContextArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
+freeVariables (TForall x t) = filter (_ /= x) $ freeVariables t
 
 isClosed :: TType -> Boolean
 isClosed = null <<< freeVariables
