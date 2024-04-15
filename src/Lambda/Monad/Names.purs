@@ -13,6 +13,7 @@ import Prelude
 import Data.Tuple (Tuple(..))
 import Data.List (List(..), (:), notElem)
 import Data.Identity (Identity(..))
+import Control.Monad.Trans.Class (class MonadTrans)
 import Safe.Coerce (coerce)
 
 -- It's really just a very specialized form of the reader monad.
@@ -37,6 +38,9 @@ instance Bind m => Bind (NamesT s m) where
                                      f' bindings
 
 instance Monad m => Monad (NamesT s m)
+
+instance MonadTrans (NamesT s) where
+    lift ma = NamesT \_ -> ma
 
 withNameBound :: forall s m a. s -> NamesT s m a -> NamesT s m a
 withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
