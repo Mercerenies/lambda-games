@@ -18,6 +18,7 @@ to generate this file without the comments in this block.
   , "either"
   , "exceptions"
   , "foldable-traversable"
+  , "lazy"
   , "lists"
   , "maybe"
   , "parsing"

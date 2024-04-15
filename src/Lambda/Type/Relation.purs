@@ -5,7 +5,7 @@ module Lambda.Type.Relation(
                            ) where
 
 import Lambda.Type(TType(..))
-import Lambda.Term(Term(..), prettyShow)
+--import Lambda.Term(Term(..), prettyShow)
 
 import Data.Tuple(Tuple(..))
 import Data.Maybe(Maybe(..))
