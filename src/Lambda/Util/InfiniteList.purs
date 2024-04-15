@@ -2,8 +2,8 @@
 module Lambda.Util.InfiniteList(
                           InfiniteList(),
                           cons, lazyCons,
-                          repeat,
-                          unfoldrForever
+                          repeat, unfoldrForever,
+                          find
                          ) where
 
 import Data.Lazy(Lazy, defer, force)
