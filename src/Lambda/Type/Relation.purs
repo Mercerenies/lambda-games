@@ -21,7 +21,7 @@ data Relation =
     IdentityRelation TType |
     -- A relation on functions which holds if it maps related elements
     -- to related elements.
-    FunctionRelation { domainRelation :: Relation, codomainRelation :: Relation } |
+    FunctionRelation { domainType :: TType, domainRelation :: Relation, codomainRelation :: Relation } |
     -- A relation that holds for all sub-relations.
     ForallRelation { argumentName :: String, resultRelation :: Relation -> Either String Relation }
 
@@ -40,7 +40,7 @@ relationifyWithBindings _ (TGround x) =
 relationifyWithBindings bindings (TArrow a b) = ado
      a' <- relationifyWithBindings bindings a
      b' <- relationifyWithBindings bindings b
-     in FunctionRelation { domainRelation: a', codomainRelation: b' }
+     in FunctionRelation { domainType: a, domainRelation: a', codomainRelation: b' }
 relationifyWithBindings _ (TContextArrow _ _) =
     unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) =

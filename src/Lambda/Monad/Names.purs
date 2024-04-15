@@ -10,10 +10,10 @@ module Lambda.Monad.Names(
 import Lambda.Util.InfiniteList(InfiniteList, unfoldrForever, cons, find)
 
 import Prelude
-import Data.Tuple(Tuple(..))
-import Data.List(List(..), (:), notElem)
-import Data.Identity(Identity(..))
-import Safe.Coerce(coerce)
+import Data.Tuple (Tuple(..))
+import Data.List (List(..), (:), notElem)
+import Data.Identity (Identity(..))
+import Safe.Coerce (coerce)
 
 -- It's really just a very specialized form of the reader monad.
 newtype NamesT :: Type -> (Type -> Type) -> Type -> Type

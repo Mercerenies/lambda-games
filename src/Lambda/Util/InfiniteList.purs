@@ -6,9 +6,9 @@ module Lambda.Util.InfiniteList(
                           find
                          ) where
 
-import Data.Lazy(Lazy, defer, force)
-import Data.Tuple(Tuple(..))
-import Data.FunctorWithIndex(class FunctorWithIndex)
+import Data.Lazy (Lazy, defer, force)
+import Data.Tuple (Tuple(..))
+import Data.FunctorWithIndex (class FunctorWithIndex)
 import Prelude
 
 newtype InfiniteList a = InfiniteList (Lazy (Tuple a (InfiniteList a)))
