@@ -5,6 +5,7 @@ module Lambda.Predicate(
 
 import Lambda.PrettyShow(class PrettyShow, prettyShow, parenthesizeIf)
 import Lambda.Term(Term)
+import Lambda.Type(TType)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
@@ -12,7 +13,7 @@ import Data.Show.Generic (genericShow)
 
 data Predicate = Equals Term Term
                | Implies Predicate Predicate
-               | Forall String Term Predicate
+               | Forall String TType Predicate
 
 derive instance Eq Predicate
 derive instance Generic Predicate _
