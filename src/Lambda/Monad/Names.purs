@@ -15,6 +15,7 @@ import Data.List (List(..), (:), notElem)
 import Data.Identity (Identity(..))
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError, catchError)
+import Control.Monad.Morph (class MFunctor, class MMonad)
 import Safe.Coerce (coerce)
 
 -- It's really just a very specialized form of the reader monad.
@@ -42,6 +43,12 @@ instance Monad m => Monad (NamesT s m)
 
 instance MonadTrans (NamesT s) where
     lift ma = NamesT \_ -> ma
+
+instance MFunctor (NamesT s) where
+    hoist f (NamesT ma) = NamesT (f <<< ma)
+
+instance MMonad (NamesT s) where
+    embed f (NamesT mb) = NamesT \bindings -> let NamesT nb = f (mb bindings) in nb bindings
 
 instance (MonadThrow e m) => MonadThrow e (NamesT s m) where
     throwError e = lift $ throwError e
