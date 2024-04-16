@@ -6,9 +6,9 @@ module Lambda.Type.Relation(
                            ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
-import Lambda.Type (prettyShow) as TType
 import Lambda.Monad.Names (NamesT, withName, withName2, runNamesT)
-import Lambda.Term (Term(..), prettyShow)
+import Lambda.Term (Term(..))
+import Lambda.PrettyShow (prettyShow)
 
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..))
@@ -62,7 +62,7 @@ describeRelation (FunctionRelation { domainType, domainRelation, codomainRelatio
     withName2 (suggestedVariableName domainType) $ \a a' -> ado
         domainDesc <- describeRelation domainRelation (Var a) (Var a')
         codomainDesc <- describeRelation codomainRelation (App left (Var a)) (App right (Var a'))
-        in "∀ " <> a <> ", " <> a' <> " ∈ " <> TType.prettyShow domainType <>
+        in "∀ " <> a <> ", " <> a' <> " ∈ " <> prettyShow domainType <>
            " such that [" <> domainDesc <> "]: " <> codomainDesc
 describeRelation (ForallRelation { argumentName, resultRelation }) left right =
     withName argumentName $ \r ->

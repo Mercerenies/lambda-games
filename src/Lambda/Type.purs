@@ -2,11 +2,10 @@
 module Lambda.Type(
                    TType(..),
                    substitute, freeVariables, isClosed,
-                   prettyShow,
                    suggestedVariableName
                   ) where
 
-import Lambda.Util(parenthesizeIf)
+import Lambda.PrettyShow(class PrettyShow, parenthesizeIf)
 
 import Prelude
 import Data.List (List(..), singleton, null, filter, nub)
@@ -45,8 +44,8 @@ freeVariables (TForall x t) = filter (_ /= x) $ freeVariables t
 isClosed :: TType -> Boolean
 isClosed = null <<< freeVariables
 
-prettyShow :: TType -> String
-prettyShow = prettyShowPrec defaultPrecedence
+instance PrettyShow TType where
+    prettyShow = prettyShowPrec defaultPrecedence
 
 defaultPrecedence :: Int
 defaultPrecedence = 0

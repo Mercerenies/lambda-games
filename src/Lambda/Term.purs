@@ -1,10 +1,9 @@
 
 module Lambda.Term(
-                   Term(..),
-                   prettyShow
+                   Term(..)
                   ) where
 
-import Lambda.Util(parenthesizeIf)
+import Lambda.PrettyShow(class PrettyShow, parenthesizeIf)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
@@ -21,8 +20,8 @@ derive instance Generic Term _
 instance showTerm :: Show Term where
     show x = genericShow x
 
-prettyShow :: Term -> String
-prettyShow = prettyShowPrec defaultPrecedence
+instance PrettyShow Term where
+    prettyShow = prettyShowPrec defaultPrecedence
 
 defaultPrecedence :: Int
 defaultPrecedence = 0
