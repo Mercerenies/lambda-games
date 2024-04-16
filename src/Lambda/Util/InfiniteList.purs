@@ -12,7 +12,7 @@ import Data.List (List(..), (:))
 import Data.Tuple (Tuple(..))
 import Data.FunctorWithIndex (class FunctorWithIndex)
 import Control.Lazy (fix)
-import Control.Comonad ((=>>))
+import Control.Comonad (class Extend, class Comonad, (=>>), extend)
 import Prelude
 
 newtype InfiniteList a = InfiniteList (Lazy (Tuple a (InfiniteList a)))
@@ -74,3 +74,9 @@ instance Apply InfiniteList where
 
 instance Applicative InfiniteList where
     pure = repeat
+
+instance Extend InfiniteList where
+    extend f list = lazyCons (f list) (defer \_ -> extend f (tail list))
+
+instance Comonad InfiniteList where
+    extract = head
