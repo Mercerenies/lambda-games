@@ -13,7 +13,8 @@ import Prelude
 import Data.Tuple (Tuple(..))
 import Data.List (List(..), (:), notElem)
 import Data.Identity (Identity(..))
-import Control.Monad.Trans.Class (class MonadTrans)
+import Control.Monad.Trans.Class (class MonadTrans, lift)
+import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError, catchError)
 import Safe.Coerce (coerce)
 
 -- It's really just a very specialized form of the reader monad.
@@ -41,6 +42,13 @@ instance Monad m => Monad (NamesT s m)
 
 instance MonadTrans (NamesT s) where
     lift ma = NamesT \_ -> ma
+
+instance (MonadThrow e m) => MonadThrow e (NamesT s m) where
+    throwError e = lift $ throwError e
+
+instance (MonadError e m) => MonadError e (NamesT s m) where
+    catchError (NamesT ma) f = NamesT \bindings -> catchError (ma bindings) (errorHandler bindings)
+      where errorHandler bindings err = let NamesT ma' = f err in ma' bindings
 
 withNameBound :: forall s m a. s -> NamesT s m a -> NamesT s m a
 withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
