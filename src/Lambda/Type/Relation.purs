@@ -1,11 +1,12 @@
 
 module Lambda.Type.Relation(
-                            Relation(..),
+                            Relation(..), identityRelation,
                             relationify, relationifyWithBindings,
                             describeRelation, describeFreeTheorem
                            ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
+import Lambda.Predicate (Predicate(..))
 import Lambda.Monad.Names (NamesT, withName, withName2, runNamesT)
 import Lambda.Term (Term(..))
 import Lambda.PrettyShow (prettyShow)
@@ -20,9 +21,7 @@ import Prelude
 import Effect.Exception.Unsafe (unsafeThrow)
 
 data Relation =
-    -- The identity relation on a type, which is true if (and only if)
-    -- the two values being compared are actually equal.
-    IdentityRelation TType |
+    Relation (Term -> Term -> Predicate) |
     -- A relation on functions which holds if it maps related elements
     -- to related elements.
     FunctionRelation { domainType :: TType, domainRelation :: Relation, codomainRelation :: Relation } |
@@ -30,6 +29,9 @@ data Relation =
     ForallRelation { argumentName :: String, resultRelation :: Relation -> Either String Relation } |
     -- A quantified relation, written as a function for convenience.
     QuantifiedVarRelation String
+
+identityRelation :: Relation
+identityRelation = Relation Equals
 
 -- Lift a closed type into a relation.
 relationify :: TType -> Either String Relation
@@ -39,10 +41,10 @@ relationifyWithBindings :: List (Tuple String Relation) -> TType -> Either Strin
 relationifyWithBindings bindings (TVar x)
     | Just rel <- lookup x bindings = Right rel
     | otherwise = Left $ "Unbound type variable: " <> x
-relationifyWithBindings _ (TGround x) =
+relationifyWithBindings _ (TGround _) =
     -- For now, assume all ground types are just the identity and
     -- don't have more complex relations. We will update this later.
-    Right $ IdentityRelation (TGround x)
+    Right identityRelation
 relationifyWithBindings bindings (TArrow a b) = ado
      a' <- relationifyWithBindings bindings a
      b' <- relationifyWithBindings bindings b
@@ -56,8 +58,8 @@ relationifyWithBindings bindings (TForall x body) =
                }
 
 describeRelation :: Relation -> Term -> Term -> NamesT String (Either String) String
-describeRelation (IdentityRelation _) left right =
-    pure $ prettyShow left <> " = " <> prettyShow right
+describeRelation (Relation r) left right =
+    pure $ prettyShow (r left right)
 describeRelation (FunctionRelation { domainType, domainRelation, codomainRelation }) left right =
     withName2 (suggestedVariableName domainType) $ \a a' -> ado
         domainDesc <- describeRelation domainRelation (Var a) (Var a')
