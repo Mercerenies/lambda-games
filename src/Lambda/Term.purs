@@ -13,6 +13,7 @@ import Data.Show.Generic (genericShow)
 data Term = Var String
           | App Term Term
           | TypeApp Term Term
+          | Equals Term Term
 
 derive instance Eq Term
 derive instance Generic Term _
@@ -26,14 +27,17 @@ prettyShow = prettyShowPrec defaultPrecedence
 defaultPrecedence :: Int
 defaultPrecedence = 0
 
+eqPrecedence :: Int
+eqPrecedence = 1
+
 appLeftPrecedence :: Int
-appLeftPrecedence = 1
+appLeftPrecedence = 2
 
 appRightPrecedence :: Int
-appRightPrecedence = 2
+appRightPrecedence = 3
 
 typeAppPrecedence :: Int
-typeAppPrecedence = 3
+typeAppPrecedence = 4
 
 prettyShowPrec :: Int -> Term -> String
 prettyShowPrec _ (Var x) = x
@@ -45,3 +49,7 @@ prettyShowPrec n (TypeApp left right) =
     let left' = prettyShowPrec typeAppPrecedence left
         right' = prettyShowPrec defaultPrecedence right in
     parenthesizeIf (n >= typeAppPrecedence) $ left' <> "[" <> right' <> "]"
+prettyShowPrec n (Equals left right) =
+    let left' = prettyShowPrec eqPrecedence left
+        right' = prettyShowPrec eqPrecedence right in
+    parenthesizeIf (n >= eqPrecedence) $ left' <> " = " <> right'

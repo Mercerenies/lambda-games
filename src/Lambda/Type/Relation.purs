@@ -79,3 +79,8 @@ describeFreeTheorem t = runNamesT do
   r <- lift $ relationify t
   withName (suggestedVariableName t) $ \a ->
     describeRelation r (Var a) (Var a)
+
+-- Clean up the variable names
+-- Add product types, possibly sum types
+-- Context types
+-- Explore mu-recursive types
