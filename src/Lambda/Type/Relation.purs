@@ -26,7 +26,7 @@ data Relation =
     -- to related elements.
     FunctionRelation { domainType :: TType, domainRelation :: Relation, codomainRelation :: Relation } |
     -- A relation that holds for all sub-relations.
-    ForallRelation { argumentName :: String, resultRelation :: Relation -> Either String Relation } |
+    ForallRelation { argumentName :: String, resultRelation :: Relation -> NamesT String (Either String) Relation } |
     -- A quantified relation, written as a function for convenience.
     QuantifiedVarRelation String
 
@@ -34,17 +34,17 @@ identityRelation :: Relation
 identityRelation = Relation Equals
 
 -- Lift a closed type into a relation.
-relationify :: TType -> Either String Relation
+relationify :: TType -> NamesT String (Either String) Relation
 relationify = relationifyWithBindings Nil
 
-relationifyWithBindings :: List (Tuple String Relation) -> TType -> Either String Relation
+relationifyWithBindings :: List (Tuple String Relation) -> TType -> NamesT String (Either String) Relation
 relationifyWithBindings bindings (TVar x)
-    | Just rel <- lookup x bindings = Right rel
-    | otherwise = Left $ "Unbound type variable: " <> x
+    | Just rel <- lookup x bindings = pure rel
+    | otherwise = lift $ Left $ "Unbound type variable: " <> x
 relationifyWithBindings _ (TGround _) =
     -- For now, assume all ground types are just the identity and
     -- don't have more complex relations. We will update this later.
-    Right identityRelation
+    pure identityRelation
 relationifyWithBindings bindings (TArrow a b) = ado
      a' <- relationifyWithBindings bindings a
      b' <- relationifyWithBindings bindings b
@@ -52,10 +52,10 @@ relationifyWithBindings bindings (TArrow a b) = ado
 relationifyWithBindings _ (TContextArrow _ _) =
     unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) =
-     Right $ ForallRelation {
-                 argumentName: x,
-                 resultRelation: \r -> relationifyWithBindings ((Tuple x r) : bindings) body
-               }
+     pure $ ForallRelation {
+                argumentName: x,
+                resultRelation: \r -> relationifyWithBindings ((Tuple x r) : bindings) body
+              }
 
 describeRelation :: Relation -> Term -> Term -> NamesT String (Either String) String
 describeRelation (Relation r) left right =
@@ -69,7 +69,7 @@ describeRelation (FunctionRelation { domainType, domainRelation, codomainRelatio
 describeRelation (ForallRelation { argumentName, resultRelation }) left right =
     withName argumentName $ \r ->
       withName2 "A" $ \a a' -> do
-        rightHandRelation <- lift $ resultRelation (QuantifiedVarRelation r)
+        rightHandRelation <- resultRelation (QuantifiedVarRelation r)
         rightHandDesc <- describeRelation rightHandRelation (TypeApp left (Var a)) (TypeApp right (Var a'))
         pure $ "∀ " <> a <> ", " <> a' <> " ∈ Type: ∀ " <> r <> " ∈ (" <> a <> " → " <> a' <> "): " <>
                rightHandDesc
@@ -78,7 +78,7 @@ describeRelation (QuantifiedVarRelation r) left right =
 
 describeFreeTheorem :: TType -> Either String String
 describeFreeTheorem t = runNamesT do
-  r <- lift $ relationify t
+  r <- relationify t
   withName (suggestedVariableName t) $ \a ->
     describeRelation r (Var a) (Var a)
 
