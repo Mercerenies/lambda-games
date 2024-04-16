@@ -21,6 +21,7 @@ to generate this file without the comments in this block.
   , "lazy"
   , "lists"
   , "maybe"
+  , "mmorph"
   , "prelude"
   , "safe-coerce"
   , "strings"
