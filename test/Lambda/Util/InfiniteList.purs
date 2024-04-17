@@ -2,14 +2,18 @@
 module Test.Lambda.Util.InfiniteList(infiniteListSpecs) where
 
 import Lambda.Util.InfiniteList (InfiniteList, head, tail, lazyCons, cons, take,
-                                 repeat, cycle)
+                                 repeat, cycle, intersperse)
+import Lambda.Util (toList)
 
 import Test.Spec.QuickCheck (quickCheck)
 import Test.Spec (describe, it, Spec)
 import Data.Lazy (defer)
-import Data.List (List(..), (:))
+import Data.Foldable (length)
+import Data.List (List(..))
+import Data.NonEmpty (NonEmpty, (:|))
+import Data.NonEmpty (head) as NonEmpty
 import Data.Function (on)
-import Control.Comonad(extend)
+import Control.Comonad (extend)
 import Prelude
 
 -- We can't test infinite lists for equality, so test the first 20
@@ -35,7 +39,16 @@ infiniteListSpecs = do
         quickCheck $ \(a :: Int) xs -> tail (lazyCons a (defer \_ -> xs)) =:= xs
     describe "repeat" do
       it "repeats the same element forever" do
-        quickCheck $ \(a :: Int) -> repeat a =:= cycle (a : Nil)
+        quickCheck $ \(a :: Int) -> repeat a =:= cycle (a :| Nil)
     describe "extend" do
       it "is the identity on `head`" do
         quickCheck $ \(xs :: InfiniteList Int) -> extend head xs =:= xs
+    describe "intersperse" do
+      it "produces the inner list if given a singleton" do
+        quickCheck $ \(xs :: InfiniteList Int) -> intersperse (xs :| Nil) =:= xs
+      it "takes the head of the first list" do
+        quickCheck $ \(xss :: NonEmpty List (InfiniteList Int)) -> head (intersperse xss) == head (NonEmpty.head xss)
+      it "takes the first element of each list first" do
+        quickCheck $ \(xss :: NonEmpty List (InfiniteList Int)) ->
+            let n = length xss in
+            take n (intersperse xss) == toList (map head xss)

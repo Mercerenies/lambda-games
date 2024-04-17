@@ -13,6 +13,7 @@ to generate this file without the comments in this block.
 { name = "lambdagames"
 , dependencies =
   [ "aff"
+  , "arrays"
   , "console"
   , "control"
   , "effect"

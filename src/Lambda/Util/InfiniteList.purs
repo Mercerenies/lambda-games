@@ -4,19 +4,21 @@ module Lambda.Util.InfiniteList(
                           cons, lazyCons,
                           repeat, unfoldrForever,
                           find,
-                          head, tail, take, prepend, cycle
+                          head, tail, intersperse, take, prepend, cycle
                          ) where
+
+import Lambda.Util (toList)
 
 import Data.Lazy (Lazy, force)
 import Data.Lazy (defer) as Lazy
 import Data.List (List(..), (:))
+import Data.NonEmpty(NonEmpty)
 import Data.Tuple (Tuple(..))
 import Data.FunctorWithIndex (class FunctorWithIndex)
-import Control.Lazy (class Lazy, fix)
+import Control.Lazy (class Lazy, fix, defer)
 import Control.Comonad (class Extend, class Comonad, extend)
 import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary, arbitrary, coarbitrary)
 import Test.QuickCheck.Gen (sized)
-import Effect.Exception.Unsafe (unsafeThrow)
 import Prelude
 
 newtype InfiniteList a = InfiniteList (Lazy (Tuple a (InfiniteList a)))
@@ -47,6 +49,10 @@ head (InfiniteList xs) = let Tuple x _ = force xs in x
 tail :: forall a. InfiniteList a -> InfiniteList a
 tail (InfiniteList xs) = let Tuple _ xs' = force xs in xs'
 
+intersperse :: forall a. NonEmpty List (InfiniteList a) -> InfiniteList a
+intersperse = toList >>> go
+    where go xss = prepend (map head xss) $ defer \_ -> go (map tail xss)
+
 take :: forall a. Int -> InfiniteList a -> List a
 take n (InfiniteList xs)
     | n <= 0 = Nil
@@ -56,9 +62,8 @@ prepend :: forall a. List a -> InfiniteList a -> InfiniteList a
 prepend Nil ys = ys
 prepend (x : xs) ys = cons x (prepend xs ys)
 
-cycle :: forall a. List a -> InfiniteList a
-cycle Nil = unsafeThrow "cycle of empty list"
-cycle xs = fix (prepend xs)
+cycle :: forall a. NonEmpty List a -> InfiniteList a
+cycle xs = let xs' = toList xs in fix (prepend xs')
 
 instance Functor InfiniteList where
     map f (InfiniteList xs) = InfiniteList (map (\(Tuple y ys) -> Tuple (f y) (map f ys)) xs)
@@ -86,9 +91,8 @@ instance Arbitrary a => Arbitrary (InfiniteList a) where
     -- Generate an arbitrary prefix, followed by an infinite sequence.
     arbitrary = ado
       prefix :: List a <- arbitrary
-      x :: a <- arbitrary
-      cycled :: List a <- arbitrary
-      in prepend prefix (cycle (x : cycled)) -- cycle argument must be nonempty
+      cycled :: NonEmpty List a <- arbitrary
+      in prepend prefix (cycle cycled) -- cycle argument must be nonempty
 
 instance Coarbitrary a => Coarbitrary (InfiniteList a) where
     coarbitrary list gen = do
