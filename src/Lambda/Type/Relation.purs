@@ -62,7 +62,8 @@ describeFreeTheorem :: TType -> Either String String
 describeFreeTheorem t = runNamesT do
   withName (suggestedVariableName t) $ \a -> do
     r <- relationify t
-    describeRelation r (Var a) (Var a)
+    description <- describeRelation r (Var a) (Var a)
+    pure $ a <> " ~ " <> a <> " if " <> description
 
 -- Clean up the variable names
 -- Add product types, possibly sum types

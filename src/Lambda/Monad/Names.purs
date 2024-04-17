@@ -64,7 +64,7 @@ askBindings :: forall s m. Applicative m => NamesT s m (List s)
 askBindings = NamesT pure
 
 freshStrings :: String -> InfiniteList String
-freshStrings s = cons s $ unfoldrForever (\n -> Tuple (s <> "_" <> show n) (n + 1)) 0
+freshStrings s = cons s $ cons (s <> "'") $ unfoldrForever (\n -> Tuple (s <> show n) (n + 1)) 0
 
 withFreshName :: forall s m a. Monad m => Eq s => InfiniteList s -> (s -> NamesT s m a) -> NamesT s m a
 withFreshName freshNameStream ma = do
