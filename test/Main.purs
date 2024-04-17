@@ -3,6 +3,7 @@ module Test.Main where
 
 import Test.Lambda.Util.InfiniteList (infiniteListSpecs)
 import Test.Lambda.Type (lambdaTypeSpecs)
+import Test.Lambda.Util (utilSpecs)
 
 import Effect (Effect)
 import Effect.Aff (launchAff_)
@@ -18,3 +19,4 @@ baseSpecs :: Spec Unit
 baseSpecs = do
   infiniteListSpecs
   lambdaTypeSpecs
+  utilSpecs
