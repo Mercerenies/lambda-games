@@ -13,6 +13,8 @@ import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.String.Common (toLower)
+import Control.Lazy (defer)
+import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary, genericArbitrary, genericCoarbitrary)
 
 data TType = TVar String
            | TGround String
@@ -25,6 +27,12 @@ derive instance Generic TType _
 
 instance showTType :: Show TType where
     show t = genericShow t
+
+instance Arbitrary TType where
+    arbitrary = defer \_ -> genericArbitrary
+
+instance Coarbitrary TType where
+    coarbitrary a gen = genericCoarbitrary a gen
 
 substitute :: String -> TType -> TType -> TType
 substitute x t (TVar y) | x == y = t
