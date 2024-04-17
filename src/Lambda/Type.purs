@@ -1,7 +1,7 @@
 
 module Lambda.Type(
                    TType(..),
-                   substitute, freeVariables, isClosed,
+                   substitute, freeVariables, isClosed, makeClosed,
                    suggestedVariableName
                   ) where
 
@@ -9,6 +9,7 @@ import Lambda.PrettyShow(class PrettyShow, parenthesizeIf)
 
 import Prelude
 import Data.List (List(..), singleton, null, filter, nub)
+import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.String.Common (toLower)
@@ -43,6 +44,11 @@ freeVariables (TForall x t) = filter (_ /= x) $ freeVariables t
 
 isClosed :: TType -> Boolean
 isClosed = null <<< freeVariables
+
+makeClosed :: TType -> TType
+makeClosed ttype =
+    let free = freeVariables ttype in
+    foldr TForall ttype free
 
 instance PrettyShow TType where
     prettyShow = prettyShowPrec defaultPrecedence
