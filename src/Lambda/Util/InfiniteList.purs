@@ -13,6 +13,9 @@ import Data.Tuple (Tuple(..))
 import Data.FunctorWithIndex (class FunctorWithIndex)
 import Control.Lazy (fix)
 import Control.Comonad (class Extend, class Comonad, (=>>), extend)
+import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary, arbitrary, coarbitrary)
+import Test.QuickCheck.Gen (sized)
+import Effect.Exception.Unsafe (unsafeThrow)
 import Prelude
 
 newtype InfiniteList a = InfiniteList (Lazy (Tuple a (InfiniteList a)))
@@ -57,6 +60,7 @@ prepend Nil ys = ys
 prepend (x : xs) ys = cons x (prepend xs ys)
 
 cycle :: forall a. List a -> Lazy (InfiniteList a)
+cycle Nil = unsafeThrow "cycle of empty list"
 cycle xs = fix (prependLazy xs)
 
 instance Functor InfiniteList where
@@ -80,3 +84,16 @@ instance Extend InfiniteList where
 
 instance Comonad InfiniteList where
     extract = head
+
+instance Arbitrary a => Arbitrary (InfiniteList a) where
+    -- Generate an arbitrary prefix, followed by an infinite sequence.
+    arbitrary = ado
+      prefix :: List a <- arbitrary
+      x :: a <- arbitrary
+      cycled :: List a <- arbitrary
+      in prepend prefix (force $ cycle (x : cycled)) -- cycle argument must be nonempty
+
+instance Coarbitrary a => Coarbitrary (InfiniteList a) where
+    coarbitrary list gen = do
+      prefix <- sized \n -> pure (take n list)
+      coarbitrary prefix gen
