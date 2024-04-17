@@ -8,13 +8,17 @@ module Lambda.Type(
 import Lambda.PrettyShow(class PrettyShow, parenthesizeIf)
 
 import Prelude
-import Data.List (List(..), singleton, null, filter, nub)
+import Data.List (List(..), (:), singleton, null, filter, nub)
 import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.String.Common (toLower)
+import Data.NonEmpty((:|))
 import Control.Lazy (defer)
-import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary, genericArbitrary, genericCoarbitrary)
+import Control.Apply (lift2)
+import Control.Monad.Gen (sized, resize, oneOf, choose)
+import Test.QuickCheck.Gen (Gen)
+import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary, arbitrary, genericCoarbitrary)
 
 data TType = TVar String
            | TGround String
@@ -29,7 +33,7 @@ instance showTType :: Show TType where
     show t = genericShow t
 
 instance Arbitrary TType where
-    arbitrary = defer \_ -> genericArbitrary
+    arbitrary = resize (min 5) genTType
 
 instance Coarbitrary TType where
     coarbitrary a gen = genericCoarbitrary a gen
@@ -103,3 +107,15 @@ suggestedGroundVariableName "Bool" = "b"
 suggestedGroundVariableName "Float" = "f"
 suggestedGroundVariableName "String" = "s"
 suggestedGroundVariableName s = toLower s
+
+genTType :: Gen TType
+genTType = genTType'
+    where genTType'' size
+              | size > 1 = resize (_ - 1) (oneOf (genArrow :| genContextArrow : genForall : Nil))
+              | otherwise = genVar `choose` genGround
+          genTType' = sized \size -> genTType'' size
+          genArrow = defer \_ -> lift2 TArrow genTType' genTType'
+          genContextArrow = defer \_ -> lift2 TContextArrow genTType' genTType'
+          genForall = defer \_ -> lift2 TForall arbitrary genTType'
+          genVar = defer \_ -> TVar <$> arbitrary
+          genGround = defer \_ -> TGround <$> arbitrary
