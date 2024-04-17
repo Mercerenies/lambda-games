@@ -33,6 +33,7 @@ to generate this file without the comments in this block.
   , "spec"
   , "spec-quickcheck"
   , "strings"
+  , "tailrec"
   , "transformers"
   , "tuples"
   , "unfoldable"
