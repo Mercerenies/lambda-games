@@ -14,6 +14,7 @@ import Control.Alt ((<|>))
 import Control.Lazy (defer)
 import Control.Monad.Rec.Class (class MonadRec)
 import Data.List ((:))
+import Data.Array (notElem)
 import Data.Foldable (foldr)
 import Data.Maybe (maybe)
 import Data.String.CodePoints (codePointAt, codePointFromChar)
@@ -22,7 +23,9 @@ import Data.Identity (Identity(..))
 import Data.Either (Either)
 
 identifier :: forall m. Monad m => ParserT String m String
-identifier = fromChars <$> lift2 (:) (letter <|> char '_') (many (char '_' <|> letter <|> digit))
+identifier = try (guarded isNotKeyword body)
+    where body = fromChars <$> lift2 (:) (letter <|> char '_') (many (char '_' <|> letter <|> digit))
+          isNotKeyword s = s `notElem` ["forall"]
 
 varName :: forall m. Monad m => ParserT String m String
 varName = try (guarded startsWithLowercase identifier) <?> "expected type variable"
