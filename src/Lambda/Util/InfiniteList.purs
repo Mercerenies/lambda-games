@@ -4,7 +4,7 @@ module Lambda.Util.InfiniteList(
                           cons, lazyCons,
                           repeat, unfoldrForever,
                           find,
-                          head, tail, take, prepend, prependLazy, cycle
+                          head, tail, take, prepend, cycle
                          ) where
 
 import Data.Lazy (Lazy, force)
@@ -12,8 +12,8 @@ import Data.Lazy (defer) as Lazy
 import Data.List (List(..), (:))
 import Data.Tuple (Tuple(..))
 import Data.FunctorWithIndex (class FunctorWithIndex)
-import Control.Lazy (class Lazy, defer, fix)
-import Control.Comonad (class Extend, class Comonad, (=>>), extend)
+import Control.Lazy (class Lazy, fix)
+import Control.Comonad (class Extend, class Comonad, extend)
 import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary, arbitrary, coarbitrary)
 import Test.QuickCheck.Gen (sized)
 import Effect.Exception.Unsafe (unsafeThrow)
@@ -52,17 +52,13 @@ take n (InfiniteList xs)
     | n <= 0 = Nil
     | otherwise = let Tuple x xs' = force xs in x : take (n - 1) xs'
 
-prependLazy :: forall a. List a -> Lazy (InfiniteList a) -> Lazy (InfiniteList a)
-prependLazy Nil ys = ys
-prependLazy (x : xs) ys = prependLazy xs ys =>> lazyCons x
-
 prepend :: forall a. List a -> InfiniteList a -> InfiniteList a
 prepend Nil ys = ys
 prepend (x : xs) ys = cons x (prepend xs ys)
 
-cycle :: forall a. List a -> Lazy (InfiniteList a)
+cycle :: forall a. List a -> InfiniteList a
 cycle Nil = unsafeThrow "cycle of empty list"
-cycle xs = fix (prependLazy xs)
+cycle xs = fix (prepend xs)
 
 instance Functor InfiniteList where
     map f (InfiniteList xs) = InfiniteList (map (\(Tuple y ys) -> Tuple (f y) (map f ys)) xs)
@@ -92,7 +88,7 @@ instance Arbitrary a => Arbitrary (InfiniteList a) where
       prefix :: List a <- arbitrary
       x :: a <- arbitrary
       cycled :: List a <- arbitrary
-      in prepend prefix (force $ cycle (x : cycled)) -- cycle argument must be nonempty
+      in prepend prefix (cycle (x : cycled)) -- cycle argument must be nonempty
 
 instance Coarbitrary a => Coarbitrary (InfiniteList a) where
     coarbitrary list gen = do

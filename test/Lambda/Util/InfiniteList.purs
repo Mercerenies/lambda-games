@@ -1,12 +1,12 @@
 
 module Test.Lambda.Util.InfiniteList(infiniteListSpecs) where
 
-import Lambda.Util.InfiniteList (InfiniteList, head, tail, cons, lazyCons, take,
+import Lambda.Util.InfiniteList (InfiniteList, head, tail, lazyCons, cons, take,
                                  repeat, cycle)
 
 import Test.Spec.QuickCheck (quickCheck)
 import Test.Spec (describe, it, Spec)
-import Data.Lazy (defer, force)
+import Data.Lazy (defer)
 import Data.List (List(..), (:))
 import Data.Function (on)
 import Control.Comonad(extend)
@@ -35,7 +35,7 @@ infiniteListSpecs = do
         quickCheck $ \(a :: Int) xs -> tail (lazyCons a (defer \_ -> xs)) =:= xs
     describe "repeat" do
       it "repeats the same element forever" do
-        quickCheck $ \(a :: Int) -> repeat a =:= force (cycle (a : Nil))
+        quickCheck $ \(a :: Int) -> repeat a =:= cycle (a : Nil)
     describe "extend" do
       it "is the identity on `head`" do
         quickCheck $ \(xs :: InfiniteList Int) -> extend head xs =:= xs
