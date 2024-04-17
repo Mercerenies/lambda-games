@@ -7,13 +7,15 @@ module Lambda.Type.Relation(
 
 import Lambda.Type (TType(..), suggestedVariableName)
 import Lambda.Predicate (Predicate(..))
-import Lambda.Monad.Names (NamesT, withName, withName2, runNamesT)
+import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesT)
+import Lambda.Util.InfiniteList (InfiniteList, intersperse)
 import Lambda.Term (Term(..))
 import Lambda.PrettyShow (prettyShow)
 
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..))
 import Data.List (List(..), (:))
+import Data.NonEmpty ((:|))
 import Data.Foldable (lookup)
 import Data.Either (Either(..))
 import Control.Monad.Trans.Class (lift)
@@ -24,6 +26,9 @@ newtype Relation = Relation (Term -> Term -> Predicate)
 
 identityRelation :: Relation
 identityRelation = Relation Equals
+
+functionNames :: InfiniteList String
+functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
 
 -- Lift a closed type into a relation.
 relationify :: TType -> NamesT String (Either String) Relation
@@ -47,7 +52,7 @@ relationifyWithBindings _ (TContextArrow _ _) =
     unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) = do
   withName2 x \x1 x2 -> do
-    withName "f" \f -> do
+    withFreshName functionNames \f -> do
       let rel = Relation \left right -> Equals (App (Var f) left) right
       Relation innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body
       pure $ Relation \left right -> Forall x1 (TVar "Type") $ Forall x2 (TVar "Type") $

@@ -2,7 +2,7 @@
 module Lambda.Monad.Names(
                           NamesT(), Names,
                           withNameBound, askBindings,
-                          freshStrings, withName, withName2,
+                          freshStrings, withFreshName, withName, withName2,
                           runNamesTWith, runNamesT,
                           runNamesWith, runNames
                          ) where
