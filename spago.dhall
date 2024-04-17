@@ -12,7 +12,8 @@ to generate this file without the comments in this block.
 -}
 { name = "lambdagames"
 , dependencies =
-  [ "console"
+  [ "aff"
+  , "console"
   , "control"
   , "effect"
   , "either"
@@ -24,7 +25,10 @@ to generate this file without the comments in this block.
   , "maybe"
   , "mmorph"
   , "prelude"
+  , "quickcheck"
   , "safe-coerce"
+  , "spec"
+  , "spec-quickcheck"
   , "strings"
   , "transformers"
   , "tuples"

@@ -1,11 +1,18 @@
+
 module Test.Main where
 
-import Prelude
+import Test.Lambda.Util.InfiniteList (infiniteListSpecs)
 
 import Effect (Effect)
-import Effect.Class.Console (log)
+import Effect.Aff (launchAff_)
+import Test.Spec (Spec)
+import Test.Spec.Runner (runSpec)
+import Test.Spec.Reporter.Console (consoleReporter)
+import Prelude
 
 main :: Effect Unit
-main = do
-  log "🍝"
-  log "You should add some tests."
+main = launchAff_ $ runSpec [consoleReporter] baseSpecs
+
+baseSpecs :: Spec Unit
+baseSpecs = do
+  infiniteListSpecs
