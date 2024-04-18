@@ -6,6 +6,7 @@ module Lambda.Type.Relation(
                            ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
+import Lambda.Type.Error (TypeError(..))
 import Lambda.Predicate (Predicate(..))
 import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesT)
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
@@ -17,8 +18,8 @@ import Data.Maybe (Maybe(..))
 import Data.List (List(..), (:))
 import Data.NonEmpty ((:|))
 import Data.Foldable (lookup)
-import Data.Either (Either(..))
-import Control.Monad.Trans.Class (lift)
+import Data.Either (Either)
+import Control.Monad.Error.Class (class MonadError, throwError)
 import Prelude
 import Effect.Exception.Unsafe (unsafeThrow)
 
@@ -31,13 +32,14 @@ functionNames :: InfiniteList String
 functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
 
 -- Lift a closed type into a relation.
-relationify :: TType -> NamesT String (Either String) Relation
+relationify :: forall m. MonadError TypeError m => TType -> NamesT String m Relation
 relationify = relationifyWithBindings Nil
 
-relationifyWithBindings :: List (Tuple String Relation) -> TType -> NamesT String (Either String) Relation
+relationifyWithBindings :: forall m. MonadError TypeError m =>
+                           List (Tuple String Relation) -> TType -> NamesT String m Relation
 relationifyWithBindings bindings (TVar x)
     | Just rel <- lookup x bindings = pure rel
-    | otherwise = lift $ Left $ "Unbound type variable: " <> x
+    | otherwise = throwError $ UnboundVariable x
 relationifyWithBindings _ (TGround _) =
     -- For now, assume all ground types are just the identity and
     -- don't have more complex relations. We will update this later.
@@ -62,14 +64,14 @@ relationifyWithBindings bindings (TForall x body) = do
 describeRelation :: Relation -> Term -> Term -> String
 describeRelation (Relation r) left right = prettyShow (r left right)
 
-describeFreeTheoremWith :: (Predicate -> Predicate) -> TType -> Either String String
+describeFreeTheoremWith :: (Predicate -> Predicate) -> TType -> Either TypeError String
 describeFreeTheoremWith simplifier t = runNamesT do
   withName (suggestedVariableName t) $ \a -> do
     Relation r <- relationify t
     let description = prettyShow $ simplifier (r (Var a) (Var a))
     pure $ a <> " ~ " <> a <> " if " <> description
 
-describeFreeTheorem :: TType -> Either String String
+describeFreeTheorem :: TType -> Either TypeError String
 describeFreeTheorem = describeFreeTheoremWith identity
 
 -- Clean up the output a lot (simplify ∀ (b : A). something = b => ... to just directly using 'something' in place of b

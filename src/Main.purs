@@ -33,4 +33,4 @@ parseAndDescribe :: String -> Either String String
 parseAndDescribe input = do
   ttype <- lmap show $ parseExpression input
   let ttype' = makeClosed ttype
-  describeFreeTheoremWith simplify ttype'
+  lmap show $ describeFreeTheoremWith simplify ttype'
