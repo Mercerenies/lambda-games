@@ -70,7 +70,7 @@ describeFreeTheorem t = runNamesT do
     description <- describeRelation r (Var a) (Var a)
     pure $ a <> " ~ " <> a <> " if " <> description
 
--- Clean up the output a lot
+-- Clean up the output a lot (simplify ∀ (b : A). something = b => ... to just directly using 'something' in place of b
 -- Implicitly forall any free vars
 -- Add product types, possibly sum types
 -- Context types
