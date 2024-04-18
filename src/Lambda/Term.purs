@@ -1,6 +1,7 @@
 
 module Lambda.Term(
-                   Term(..)
+                   Term(..),
+                   substitute
                   ) where
 
 import Lambda.PrettyShow(class PrettyShow, parenthesizeIf)
@@ -21,6 +22,12 @@ instance showTerm :: Show Term where
 
 instance PrettyShow Term where
     prettyShow = prettyShowPrec defaultPrecedence
+
+substitute :: String -> Term -> Term -> Term
+substitute x t (Var x') | x == x' = t
+                        | otherwise = Var x'
+substitute x t (App a b) = App (substitute x t a) (substitute x t b)
+substitute x t (TypeApp a b) = TypeApp (substitute x t a) (substitute x t b)
 
 defaultPrecedence :: Int
 defaultPrecedence = 0

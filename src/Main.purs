@@ -4,7 +4,8 @@ import Prelude
 
 import Lambda.Type (makeClosed)
 import Lambda.Type.Parser (parseExpression)
-import Lambda.Type.Relation (describeFreeTheorem)
+import Lambda.Type.Relation (describeFreeTheoremWith)
+import Lambda.Predicate.Simplify (simplify)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.ReadLine (Interface, createConsoleInterface, noCompletion, prompt, setPrompt, lineH)
@@ -32,4 +33,4 @@ parseAndDescribe :: String -> Either String String
 parseAndDescribe input = do
   ttype <- lmap show $ parseExpression input
   let ttype' = makeClosed ttype
-  describeFreeTheorem ttype'
+  describeFreeTheoremWith simplify ttype'

@@ -1,11 +1,12 @@
 
 module Lambda.Predicate(
-                        Predicate(..)
+                        Predicate(..), substitute
                        ) where
 
-import Lambda.PrettyShow(class PrettyShow, prettyShow, parenthesizeIf)
-import Lambda.Term(Term)
-import Lambda.Type(TType)
+import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
+import Lambda.Term (Term)
+import Lambda.Term (substitute) as Term
+import Lambda.Type (TType)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
@@ -23,6 +24,14 @@ instance Show Predicate where
 
 instance PrettyShow Predicate where
     prettyShow = prettyShowPrec defaultPrecedence
+
+substitute :: String -> Term -> Predicate -> Predicate
+substitute x t = go
+    where go (Equals lhs rhs) = Equals (Term.substitute x t lhs) (Term.substitute x t rhs)
+          go (Implies lhs rhs) = Implies (go lhs) (go rhs)
+          go (Forall x' ttype body)
+              | x == x' = Forall x' ttype body
+              | otherwise = Forall x' ttype $ go body
 
 defaultPrecedence :: Int
 defaultPrecedence = 0

@@ -6,7 +6,7 @@ module Lambda.Predicate.Simplify(
 
 -- Miscellaneous simplifications that can be applied to predicates.
 
-import Lambda.Predicate (Predicate(..))
+import Lambda.Predicate (Predicate(..), substitute)
 import Lambda.Term (Term(..))
 
 import Control.Apply (lift2)
@@ -28,5 +28,7 @@ simplify :: Predicate -> Predicate
 simplify = simplifyConstrainedEquality
 
 simplifyConstrainedEquality :: Predicate -> Predicate
-simplifyConstrainedEquality x = x -- = postOrderTraverse go
---    where go (Forall v t (Equals (Var v') value `Implies` result)) = 
+simplifyConstrainedEquality = postOrderTraverse go
+    where go (Forall v _ (Implies (Equals (Var v') value) result)) | v == v' = substitute v value result
+          go (Forall v _ (Implies (Equals value (Var v')) result)) | v == v' = substitute v value result
+          go pred = pred

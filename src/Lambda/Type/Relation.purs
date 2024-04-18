@@ -2,7 +2,7 @@
 module Lambda.Type.Relation(
                             Relation(..), identityRelation,
                             relationify, relationifyWithBindings,
-                            describeRelation, describeFreeTheorem
+                            describeRelation, describeFreeTheoremWith, describeFreeTheorem
                            ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
@@ -59,16 +59,18 @@ relationifyWithBindings bindings (TForall x body) = do
                                        Forall f (TVar x1 `TArrow` TVar x2) $
                                          innerRelation (TypeApp left (Var x1)) (TypeApp right (Var x2))
 
-describeRelation :: Relation -> Term -> Term -> NamesT String (Either String) String
-describeRelation (Relation r) left right =
-    pure $ prettyShow (r left right)
+describeRelation :: Relation -> Term -> Term -> String
+describeRelation (Relation r) left right = prettyShow (r left right)
+
+describeFreeTheoremWith :: (Predicate -> Predicate) -> TType -> Either String String
+describeFreeTheoremWith simplifier t = runNamesT do
+  withName (suggestedVariableName t) $ \a -> do
+    Relation r <- relationify t
+    let description = prettyShow $ simplifier (r (Var a) (Var a))
+    pure $ a <> " ~ " <> a <> " if " <> description
 
 describeFreeTheorem :: TType -> Either String String
-describeFreeTheorem t = runNamesT do
-  withName (suggestedVariableName t) $ \a -> do
-    r <- relationify t
-    description <- describeRelation r (Var a) (Var a)
-    pure $ a <> " ~ " <> a <> " if " <> description
+describeFreeTheorem = describeFreeTheoremWith identity
 
 -- Clean up the output a lot (simplify ∀ (b : A). something = b => ... to just directly using 'something' in place of b
 -- Add product types, possibly sum types
