@@ -71,7 +71,6 @@ describeFreeTheorem t = runNamesT do
     pure $ a <> " ~ " <> a <> " if " <> description
 
 -- Clean up the output a lot (simplify ∀ (b : A). something = b => ... to just directly using 'something' in place of b
--- Implicitly forall any free vars
 -- Add product types, possibly sum types
 -- Context types
 -- Explore mu-recursive types

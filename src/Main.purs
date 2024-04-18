@@ -2,6 +2,7 @@ module Main where
 
 import Prelude
 
+import Lambda.Type (makeClosed)
 import Lambda.Type.Parser (parseExpression)
 import Lambda.Type.Relation (describeFreeTheorem)
 import Effect (Effect)
@@ -28,4 +29,7 @@ makeReadlineInterface = do
   pure interface
 
 parseAndDescribe :: String -> Either String String
-parseAndDescribe input = parseExpression input # lmap show >>= describeFreeTheorem
+parseAndDescribe input = do
+  ttype <- lmap show $ parseExpression input
+  let ttype' = makeClosed ttype
+  describeFreeTheorem ttype'
