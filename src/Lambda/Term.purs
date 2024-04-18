@@ -43,4 +43,4 @@ prettyShowPrec n (App left right) =
 prettyShowPrec n (TypeApp left right) =
     let left' = prettyShowPrec typeAppPrecedence left
         right' = prettyShowPrec defaultPrecedence right in
-    parenthesizeIf (n >= typeAppPrecedence) $ left' <> "[" <> right' <> "]"
+    parenthesizeIf (n > typeAppPrecedence) $ left' <> "[" <> right' <> "]"
