@@ -43,11 +43,11 @@ relationifyWithBindings _ (TGround _) =
     -- don't have more complex relations. We will update this later.
     pure identityRelation
 relationifyWithBindings bindings (TArrow a b) = do
-  Relation ra <- relationifyWithBindings bindings a
-  Relation rb <- relationifyWithBindings bindings b
-  withName2 (suggestedVariableName a) $ \a1 a2 ->
-      pure $ Relation \left right -> Forall a1 a $ Forall a2 a $
-                                       ra (Var a1) (Var a2) `Implies` rb (App left (Var a1)) (App right (Var a2))
+  withName2 (suggestedVariableName a) $ \a1 a2 -> do
+    Relation ra <- relationifyWithBindings bindings a
+    Relation rb <- relationifyWithBindings bindings b
+    pure $ Relation \left right -> Forall a1 a $ Forall a2 a $
+                                     ra (Var a1) (Var a2) `Implies` rb (App left (Var a1)) (App right (Var a2))
 relationifyWithBindings _ (TContextArrow _ _) =
     unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) = do
@@ -70,7 +70,7 @@ describeFreeTheorem t = runNamesT do
     description <- describeRelation r (Var a) (Var a)
     pure $ a <> " ~ " <> a <> " if " <> description
 
--- Clean up the variable names
+-- Clean up the output a lot
 -- Add product types, possibly sum types
 -- Context types
 -- Explore mu-recursive types

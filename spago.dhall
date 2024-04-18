@@ -14,6 +14,7 @@ to generate this file without the comments in this block.
 , dependencies =
   [ "aff"
   , "arrays"
+  , "bifunctors"
   , "console"
   , "control"
   , "effect"
@@ -26,6 +27,8 @@ to generate this file without the comments in this block.
   , "lists"
   , "maybe"
   , "mmorph"
+  , "node-event-emitter"
+  , "node-readline"
   , "nonempty"
   , "parsing"
   , "prelude"

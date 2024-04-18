@@ -37,8 +37,8 @@ prettyShowPrec :: Int -> Predicate -> String
 prettyShowPrec _ (Equals a b) = prettyShow a <> " = " <> prettyShow b
 prettyShowPrec n (Implies lhs rhs) =
     let lhs' = prettyShowPrec impliesLeftPrecedence lhs
-        rhs' = prettyShowPrec impliesRightPrecedence rhs
-    in parenthesizeIf (n >= impliesLeftPrecedence) $ lhs' <> " => " <> rhs'
-prettyShowPrec _ (Forall var varType body) =
+        rhs' = prettyShowPrec impliesRightPrecedence rhs in
+    parenthesizeIf (n >= impliesLeftPrecedence) $ lhs' <> " => " <> rhs'
+prettyShowPrec n (Forall var varType body) =
     let body' = prettyShowPrec defaultPrecedence body in
-    "∀ " <> var <> " : " <> prettyShow varType <> " . " <> body'
+    parenthesizeIf (n >= impliesLeftPrecedence) $ "∀ " <> var <> " : " <> prettyShow varType <> " . " <> body'
