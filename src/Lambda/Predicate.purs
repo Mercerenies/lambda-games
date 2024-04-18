@@ -40,5 +40,12 @@ prettyShowPrec n (Implies lhs rhs) =
         rhs' = prettyShowPrec impliesRightPrecedence rhs in
     parenthesizeIf (n >= impliesLeftPrecedence) $ lhs' <> " => " <> rhs'
 prettyShowPrec n (Forall var varType body) =
+    parenthesizeIf (n >= impliesLeftPrecedence) $ "∀ " <> prettyShowForall var varType body
+
+-- We collate consecutive foralls over the same domain, to get prettier output.
+prettyShowForall :: String -> TType -> Predicate -> String
+prettyShowForall var varType (Forall var' varType' body') | varType == varType' =
+    var <> " " <> prettyShowForall var' varType' body'
+prettyShowForall var varType body =
     let body' = prettyShowPrec defaultPrecedence body in
-    parenthesizeIf (n >= impliesLeftPrecedence) $ "∀ " <> var <> " : " <> prettyShow varType <> " . " <> body'
+    var <> ": " <> prettyShow varType <> ". " <> body'
