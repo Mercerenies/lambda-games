@@ -73,16 +73,16 @@ instance MonadNames s m => MonadNames s (ExceptT e m) where
 freshStrings :: String -> InfiniteList String
 freshStrings s = cons s $ cons (s <> "'") $ unfoldrForever (\n -> Tuple (s <> show n) (n + 1)) 0
 
-withFreshName :: forall s m a. Monad m => Eq s => InfiniteList s -> (s -> NamesT s m a) -> NamesT s m a
+withFreshName :: forall s m a. MonadNames s m => Eq s => InfiniteList s -> (s -> m a) -> m a
 withFreshName freshNameStream ma = do
   bindings <- askBindings
   let unboundName = find (\name -> name `notElem` bindings) freshNameStream
   withNameBound unboundName (ma unboundName)
 
-withName :: forall m a. Monad m => String -> (String -> NamesT String m a) -> NamesT String m a
+withName :: forall m a. MonadNames String m => String -> (String -> m a) -> m a
 withName baseName = withFreshName (freshStrings baseName)
 
-withName2 :: forall m a. Monad m => String -> (String -> String -> NamesT String m a) -> NamesT String m a
+withName2 :: forall m a. MonadNames String m => String -> (String -> String -> m a) -> m a
 withName2 baseName ma = withName baseName $ \a -> withName baseName $ \a' -> ma a a'
 
 runNamesTWith :: forall s m a. Monad m => List s -> NamesT s m a -> m a
