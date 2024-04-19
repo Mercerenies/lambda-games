@@ -1,6 +1,6 @@
 
 module Lambda.Type.Builtins(
-                            groundType, listType,
+                            basicType, listType,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
@@ -26,8 +26,8 @@ import Prelude
 indexNames :: InfiniteList String
 indexNames = intersperse (freshStrings "i" :| freshStrings "j" : freshStrings "k" : Nil)
 
-groundType :: forall m. Lambda m Relation
-groundType = Ground identityRelation
+basicType :: forall m. Lambda m Relation
+basicType = Ground identityRelation
 
 listType :: forall m. MonadNames String m => MonadError KindError m => Lambda m Relation
 listType = lambda1 \r -> ado
@@ -42,11 +42,11 @@ listType = lambda1 \r -> ado
 
 namedBuiltinsMap :: forall m. MonadNames String m => MonadError KindError m => Map String (Lambda m Relation)
 namedBuiltinsMap = Map.fromFoldable [
-                    Tuple "Int" groundType,
-                    Tuple "Float" groundType,
-                    Tuple "Double" groundType,
-                    Tuple "String" groundType,
-                    Tuple "Boolean" groundType,
+                    Tuple "Int" basicType,
+                    Tuple "Float" basicType,
+                    Tuple "Double" basicType,
+                    Tuple "String" basicType,
+                    Tuple "Boolean" basicType,
                     Tuple "List" listType
                    ]
 
