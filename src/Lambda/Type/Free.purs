@@ -9,7 +9,7 @@ import Lambda.Type.Relation (Relation(..), identityRelation, LambdaContextT)
 import Lambda.Type.Error (TypeError(..), KindError)
 import Lambda.Type.Functions (Lambda(..), expectGround)
 import Lambda.Term (Term(..))
-import Lambda.Predicate (Predicate(..))
+import Lambda.Predicate (Predicate(..), equals)
 import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesT)
 import Lambda.Util (modifyError)
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
@@ -57,7 +57,7 @@ relationifyWithBindings _ (TContextArrow _ _) =
 relationifyWithBindings bindings (TForall x body) = do
   withName2 x \x1 x2 -> do
     withFreshName functionNames \f -> do
-      let rel = Relation \left right -> Equals (App (Var f) left) right
+      let rel = Relation \left right -> equals (App (Var f) left) right
       Relation innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body >>= expectGround'
       pure $ Ground $ Relation \left right -> Forall x1 (TVar "Type") $ Forall x2 (TVar "Type") $
                                                 Forall f (TVar x1 `TArrow` TVar x2) $

@@ -17,7 +17,7 @@ import Prelude
 postOrderTraverseM :: forall m. Monad m => (Predicate -> m Predicate) -> Predicate -> m Predicate
 postOrderTraverseM f = go
     where go x = recurse x >>= f
-          recurse (Equals a b) = pure (Equals a b)
+          recurse (Operator op a b) = pure (Operator op a b)
           recurse (Implies lhs rhs) = lift2 Implies (go lhs) (go rhs)
           recurse (And lhs rhs) = lift2 And (go lhs) (go rhs)
           recurse (Forall s ttype pred) = Forall s ttype <$> go pred
@@ -30,6 +30,6 @@ simplify = simplifyConstrainedEquality
 
 simplifyConstrainedEquality :: Predicate -> Predicate
 simplifyConstrainedEquality = postOrderTraverse go
-    where go (Forall v _ (Implies (Equals (Var v') value) result)) | v == v' = substitute v value result
-          go (Forall v _ (Implies (Equals value (Var v')) result)) | v == v' = substitute v value result
+    where go (Forall v _ (Implies (Operator "=" (Var v') value) result)) | v == v' = substitute v value result
+          go (Forall v _ (Implies (Operator "=" value (Var v')) result)) | v == v' = substitute v value result
           go pred = pred

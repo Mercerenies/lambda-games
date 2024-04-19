@@ -1,6 +1,6 @@
 
 module Lambda.Predicate(
-                        Predicate(..), substitute
+                        Predicate(..), equals, substitute
                        ) where
 
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
@@ -12,7 +12,7 @@ import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 
-data Predicate = Equals Term Term
+data Predicate = Operator String Term Term
                | Implies Predicate Predicate
                | And Predicate Predicate
                | Forall String TType Predicate
@@ -26,9 +26,12 @@ instance Show Predicate where
 instance PrettyShow Predicate where
     prettyShow = prettyShowPrec defaultPrecedence
 
+equals :: Term -> Term -> Predicate
+equals = Operator "="
+
 substitute :: String -> Term -> Predicate -> Predicate
 substitute x t = go
-    where go (Equals lhs rhs) = Equals (Term.substitute x t lhs) (Term.substitute x t rhs)
+    where go (Operator op lhs rhs) = Operator op (Term.substitute x t lhs) (Term.substitute x t rhs)
           go (Implies lhs rhs) = Implies (go lhs) (go rhs)
           go (And lhs rhs) = And (go lhs) (go rhs)
           go (Forall x' ttype body)
@@ -48,7 +51,7 @@ andPrecedence :: Int
 andPrecedence = 3
 
 prettyShowPrec :: Int -> Predicate -> String
-prettyShowPrec _ (Equals a b) = prettyShow a <> " = " <> prettyShow b
+prettyShowPrec _ (Operator op a b) = prettyShow a <> " " <> op <> " " <> prettyShow b
 prettyShowPrec n (Implies lhs rhs) =
     let lhs' = prettyShowPrec impliesLeftPrecedence lhs
         rhs' = prettyShowPrec impliesRightPrecedence rhs in

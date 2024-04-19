@@ -5,7 +5,7 @@ module Lambda.Type.Relation(
                             describeRelation
                            ) where
 
-import Lambda.Predicate (Predicate(..))
+import Lambda.Predicate (Predicate, equals)
 import Lambda.Term (Term)
 import Lambda.PrettyShow (prettyShow)
 import Lambda.Type.Error (KindError)
@@ -23,7 +23,7 @@ runRelation :: Relation -> Term -> Term -> Predicate
 runRelation (Relation r) = r
 
 identityRelation :: Relation
-identityRelation = Relation Equals
+identityRelation = Relation equals
 
 describeRelation :: Relation -> Term -> Term -> String
 describeRelation (Relation r) left right = prettyShow (r left right)
