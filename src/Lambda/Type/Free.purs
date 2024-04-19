@@ -57,7 +57,7 @@ relationifyWithBindings _ (TContextArrow _ _) =
 relationifyWithBindings bindings (TForall x body) = do
   withName2 x \x1 x2 -> do
     withFreshName functionNames \f -> do
-      let rel = Relation \left right -> equals (App (Var f) left) right
+      let rel = Relation \left right -> App (Var f) left `equals` right
       Relation innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body >>= expectGround'
       pure $ Ground $ Relation \left right -> Forall x1 (TVar "Type") $ Forall x2 (TVar "Type") $
                                                 Forall f (TVar x1 `TArrow` TVar x2) $
