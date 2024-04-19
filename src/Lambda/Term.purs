@@ -13,6 +13,7 @@ import Data.Show.Generic (genericShow)
 data Term = Var String
           | App Term Term
           | TypeApp Term Term
+          | Subscript Term Term
 
 derive instance Eq Term
 derive instance Generic Term _
@@ -28,6 +29,7 @@ substitute x t (Var x') | x == x' = t
                         | otherwise = Var x'
 substitute x t (App a b) = App (substitute x t a) (substitute x t b)
 substitute x t (TypeApp a b) = TypeApp (substitute x t a) (substitute x t b)
+substitute x t (Subscript a b) = Subscript (substitute x t a) (substitute x t b)
 
 defaultPrecedence :: Int
 defaultPrecedence = 0
@@ -50,4 +52,10 @@ prettyShowPrec n (App left right) =
 prettyShowPrec n (TypeApp left right) =
     let left' = prettyShowPrec typeAppPrecedence left
         right' = prettyShowPrec defaultPrecedence right in
+    parenthesizeIf (n > typeAppPrecedence) $ left' <> "[" <> right' <> "]"
+prettyShowPrec n (Subscript left right) =
+    let left' = prettyShowPrec typeAppPrecedence left
+        right' = prettyShowPrec defaultPrecedence right in
+    -- TODO We use TypeApp precedence here, since the two operators
+    -- are identical. We might change this later.
     parenthesizeIf (n > typeAppPrecedence) $ left' <> "[" <> right' <> "]"
