@@ -4,7 +4,7 @@ import Prelude
 
 import Lambda.Type (makeClosed)
 import Lambda.Type.Parser (parseExpression)
-import Lambda.Type.Relation (describeFreeTheoremWith)
+import Lambda.Type.Free (describeFreeTheoremWith)
 import Lambda.Predicate.Simplify (simplify)
 import Effect (Effect)
 import Effect.Console (log)
