@@ -1,7 +1,7 @@
 
 module Lambda.Monad.Names(
                           NamesT(), Names,
-                          withNameBound, askBindings,
+                          class MonadNames, withNameBound, askBindings,
                           freshStrings, withFreshName, withName, withName2,
                           runNamesTWith, runNamesT,
                           runNamesWith, runNames
@@ -15,8 +15,13 @@ import Data.List (List(..), (:), notElem)
 import Data.Identity (Identity(..))
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError, catchError)
-import Control.Monad.Morph (class MFunctor, class MMonad)
+import Control.Monad.Morph (class MFunctor, class MMonad, hoist)
+import Control.Monad.Except.Trans (ExceptT)
 import Safe.Coerce (coerce)
+
+class Monad m <= MonadNames s m | m -> s where
+    withNameBound :: forall a. s -> m a -> m a
+    askBindings :: m (List s)
 
 -- It's really just a very specialized form of the reader monad.
 newtype NamesT :: Type -> (Type -> Type) -> Type -> Type
@@ -57,11 +62,13 @@ instance (MonadError e m) => MonadError e (NamesT s m) where
     catchError (NamesT ma) f = NamesT \bindings -> catchError (ma bindings) (errorHandler bindings)
       where errorHandler bindings err = let NamesT ma' = f err in ma' bindings
 
-withNameBound :: forall s m a. s -> NamesT s m a -> NamesT s m a
-withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
+instance Monad m => MonadNames s (NamesT s m) where
+    withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
+    askBindings = NamesT pure
 
-askBindings :: forall s m. Applicative m => NamesT s m (List s)
-askBindings = NamesT pure
+instance MonadNames s m => MonadNames s (ExceptT e m) where
+    withNameBound s = hoist (withNameBound s)
+    askBindings = lift askBindings
 
 freshStrings :: String -> InfiniteList String
 freshStrings s = cons s $ cons (s <> "'") $ unfoldrForever (\n -> Tuple (s <> show n) (n + 1)) 0
