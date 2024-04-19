@@ -1,6 +1,6 @@
 
 module Lambda.Type.Relation(
-                            Relation(..), identityRelation,
+                            Relation(..), runRelation, identityRelation,
                             describeRelation
                            ) where
 
@@ -11,6 +11,9 @@ import Lambda.PrettyShow (prettyShow)
 import Prelude
 
 newtype Relation = Relation (Term -> Term -> Predicate)
+
+runRelation :: Relation -> Term -> Term -> Predicate
+runRelation (Relation r) = r
 
 identityRelation :: Relation
 identityRelation = Relation Equals
