@@ -15,6 +15,7 @@ import Data.List (List(..), (:), notElem)
 import Data.Identity (Identity(..))
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError, catchError)
+import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, ask, local)
 import Control.Monad.Morph (class MFunctor, class MMonad, hoist)
 import Control.Monad.Except.Trans (ExceptT)
 import Safe.Coerce (coerce)
@@ -55,6 +56,12 @@ instance MFunctor (NamesT s) where
 instance MMonad (NamesT s) where
     embed f (NamesT mb) = NamesT \bindings -> let NamesT nb = f (mb bindings) in nb bindings
 
+instance Monad m => MonadNames s (NamesT s m) where
+    withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
+    askBindings = NamesT pure
+
+-- Instances that commute NamesT over classes.
+
 instance (MonadThrow e m) => MonadThrow e (NamesT s m) where
     throwError e = lift $ throwError e
 
@@ -62,13 +69,19 @@ instance (MonadError e m) => MonadError e (NamesT s m) where
     catchError (NamesT ma) f = NamesT \bindings -> catchError (ma bindings) (errorHandler bindings)
       where errorHandler bindings err = let NamesT ma' = f err in ma' bindings
 
-instance Monad m => MonadNames s (NamesT s m) where
-    withNameBound newName (NamesT ma) = NamesT \bindings -> ma (newName : bindings)
-    askBindings = NamesT pure
+instance (MonadAsk r m) => MonadAsk r (NamesT s m) where
+    ask = lift ask
+
+instance (MonadReader r m) => MonadReader r (NamesT s m) where
+    local f = hoist (local f)
+
+-- Instances that commute MonadNames over types.
 
 instance MonadNames s m => MonadNames s (ExceptT e m) where
     withNameBound s = hoist (withNameBound s)
     askBindings = lift askBindings
+
+-- End of instances.
 
 freshStrings :: String -> InfiniteList String
 freshStrings s = cons s $ cons (s <> "'") $ unfoldrForever (\n -> Tuple (s <> show n) (n + 1)) 0
