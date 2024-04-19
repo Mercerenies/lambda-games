@@ -5,7 +5,7 @@ module Lambda.Type(
                    suggestedVariableName
                   ) where
 
-import Lambda.PrettyShow(class PrettyShow, parenthesizeIf)
+import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
 
 import Prelude
 import Data.List (List(..), (:), singleton, null, filter, nub)
