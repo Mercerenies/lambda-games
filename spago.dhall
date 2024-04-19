@@ -30,6 +30,7 @@ to generate this file without the comments in this block.
   , "node-event-emitter"
   , "node-readline"
   , "nonempty"
+  , "ordered-collections"
   , "parsing"
   , "prelude"
   , "quickcheck"
