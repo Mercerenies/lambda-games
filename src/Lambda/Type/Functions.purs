@@ -13,11 +13,11 @@ import Control.Monad.Error.Class (class MonadError, throwError)
 
 -- Very simple lambda calculus built on top of the type system, so we
 -- can define type-level operators.
-data Lambda r = Ground r | Function { domain :: TKind, codomain :: TKind, body :: LambdaFunction r }
+data Lambda m r = Ground r | Function { domain :: TKind, codomain :: TKind, body :: LambdaFunction m r }
 
-type LambdaFunction r = forall m. MonadError KindError m => Lambda r -> m (Lambda r)
+type LambdaFunction m r = Lambda m r -> m (Lambda m r)
 
-getKind :: forall r. Lambda r -> TKind
+getKind :: forall m r. Lambda m r -> TKind
 getKind (Ground _) = Ty
 getKind (Function { domain, codomain }) = domain `KArrow` codomain
 
@@ -26,7 +26,7 @@ assertKind expected actual
     | expected == actual = pure unit
     | otherwise = throwError $ KindError { expected, actual }
 
-expectFunction :: forall m r. MonadError KindError m => TKind -> TKind -> Lambda r -> m (LambdaFunction r)
+expectFunction :: forall m r. MonadError KindError m => TKind -> TKind -> Lambda m r -> m (LambdaFunction m r)
 expectFunction domain codomain =
     case _ of
       Ground _ -> throwError $ KindError {
@@ -35,7 +35,7 @@ expectFunction domain codomain =
                   }
       f @ (Function { body }) -> body <$ assertKind (getKind f) (domain `KArrow` codomain)
 
-expectGround :: forall m r. MonadError KindError m => Lambda r -> m r
+expectGround :: forall m r. MonadError KindError m => Lambda m r -> m r
 expectGround (Ground r) = pure r
 expectGround f = throwError $ KindError {
                     expected: Ty,
@@ -43,7 +43,10 @@ expectGround f = throwError $ KindError {
                   }
 
 -- Helper for producing lambdas of kind (Type -> Type)
-lambda1 :: forall r. (r -> r) -> Lambda r
+lambda1 :: forall r m. MonadError KindError m => (r -> m r) -> Lambda m r
 lambda1 f = Function { domain: Ty, codomain: Ty, body }
-    where body :: LambdaFunction r
-          body a = (Ground <<< f) <$> expectGround a
+    where body :: LambdaFunction m r
+          body a = do
+            a' <- expectGround a
+            gr <- f a'
+            pure $ Ground gr

@@ -1,12 +1,13 @@
 
 module Lambda.Type.Free(
+                        LambdaContextT,
                         relationify, relationifyWithBindings,
                         describeFreeTheorem, describeFreeTheoremWith
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
 import Lambda.Type.Relation (Relation(..), identityRelation)
-import Lambda.Type.Error (TypeError(..))
+import Lambda.Type.Error (TypeError(..), KindError)
 import Lambda.Type.Functions (Lambda(..), expectGround)
 import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate(..))
@@ -22,22 +23,25 @@ import Data.NonEmpty ((:|))
 import Data.Foldable (lookup)
 import Data.Either (Either)
 import Control.Monad.Error.Class (class MonadError, throwError)
+import Control.Monad.Except.Trans (ExceptT)
 import Prelude
 import Effect.Exception.Unsafe (unsafeThrow)
+
+type LambdaContextT m = ExceptT KindError (NamesT String m)
 
 functionNames :: InfiniteList String
 functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
 
 -- Lift a closed type into a relation.
-relationify :: forall m. MonadError TypeError m => TType -> NamesT String m (Lambda Relation)
+relationify :: forall m. MonadError TypeError m => TType -> NamesT String m (Lambda (LambdaContextT m) Relation)
 relationify = relationifyWithBindings Nil
 
 -- expectGround but with errors in TypeError rather than KindError.
-expectGround' :: forall m r. MonadError TypeError m => Lambda r -> m r
+expectGround' :: forall m r. MonadError TypeError m => Lambda (ExceptT KindError m) r -> m r
 expectGround' = modifyError MismatchedKinds <<< expectGround
 
 relationifyWithBindings :: forall m. MonadError TypeError m =>
-                           List (Tuple String Relation) -> TType -> NamesT String m (Lambda Relation)
+                           List (Tuple String Relation) -> TType -> NamesT String m (Lambda (LambdaContextT m) Relation)
 relationifyWithBindings bindings (TVar x)
     | Just rel <- lookup x bindings = pure (Ground rel)
     | otherwise = throwError $ UnboundVariable x
