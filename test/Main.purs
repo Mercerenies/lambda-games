@@ -2,6 +2,7 @@
 module Test.Main where
 
 import Test.Lambda.Util.InfiniteList (infiniteListSpecs)
+import Test.Lambda.LookupMap (lookupMapSpecs)
 import Test.Lambda.Type (lambdaTypeSpecs)
 import Test.Lambda.Util (utilSpecs)
 
@@ -18,5 +19,6 @@ main = launchAff_ $ runSpec [consoleReporter] baseSpecs
 baseSpecs :: Spec Unit
 baseSpecs = do
   infiniteListSpecs
+  lookupMapSpecs
   lambdaTypeSpecs
   utilSpecs
