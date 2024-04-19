@@ -19,6 +19,7 @@ postOrderTraverseM f = go
     where go x = recurse x >>= f
           recurse (Equals a b) = pure (Equals a b)
           recurse (Implies lhs rhs) = lift2 Implies (go lhs) (go rhs)
+          recurse (And lhs rhs) = lift2 And (go lhs) (go rhs)
           recurse (Forall s ttype pred) = Forall s ttype <$> go pred
 
 postOrderTraverse :: (Predicate -> Predicate) -> Predicate -> Predicate

@@ -14,6 +14,7 @@ import Data.Show.Generic (genericShow)
 
 data Predicate = Equals Term Term
                | Implies Predicate Predicate
+               | And Predicate Predicate
                | Forall String TType Predicate
 
 derive instance Eq Predicate
@@ -29,6 +30,7 @@ substitute :: String -> Term -> Predicate -> Predicate
 substitute x t = go
     where go (Equals lhs rhs) = Equals (Term.substitute x t lhs) (Term.substitute x t rhs)
           go (Implies lhs rhs) = Implies (go lhs) (go rhs)
+          go (And lhs rhs) = And (go lhs) (go rhs)
           go (Forall x' ttype body)
               | x == x' = Forall x' ttype body
               | otherwise = Forall x' ttype $ go body
@@ -42,12 +44,19 @@ impliesRightPrecedence = 1
 impliesLeftPrecedence :: Int
 impliesLeftPrecedence = 2
 
+andPrecedence :: Int
+andPrecedence = 3
+
 prettyShowPrec :: Int -> Predicate -> String
 prettyShowPrec _ (Equals a b) = prettyShow a <> " = " <> prettyShow b
 prettyShowPrec n (Implies lhs rhs) =
     let lhs' = prettyShowPrec impliesLeftPrecedence lhs
         rhs' = prettyShowPrec impliesRightPrecedence rhs in
     parenthesizeIf (n >= impliesLeftPrecedence) $ lhs' <> " => " <> rhs'
+prettyShowPrec n (And lhs rhs) =
+    let lhs' = prettyShowPrec andPrecedence lhs
+        rhs' = prettyShowPrec andPrecedence rhs in
+    parenthesizeIf (n > andPrecedence) $ lhs' <> " ∧ " <> rhs'
 prettyShowPrec n (Forall var varType body) =
     parenthesizeIf (n >= impliesLeftPrecedence) $ "∀ " <> prettyShowForall var varType body
 
