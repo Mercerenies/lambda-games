@@ -1,12 +1,11 @@
 
 module Lambda.Type.Free(
-                        LambdaContextT,
                         relationify, relationifyWithBindings,
                         describeFreeTheorem, describeFreeTheoremWith
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
-import Lambda.Type.Relation (Relation(..), identityRelation)
+import Lambda.Type.Relation (Relation(..), identityRelation, LambdaContextT)
 import Lambda.Type.Error (TypeError(..), KindError)
 import Lambda.Type.Functions (Lambda(..), expectGround)
 import Lambda.Term (Term(..))
@@ -26,8 +25,6 @@ import Control.Monad.Error.Class (class MonadError, throwError)
 import Control.Monad.Except.Trans (ExceptT)
 import Prelude
 import Effect.Exception.Unsafe (unsafeThrow)
-
-type LambdaContextT m = ExceptT KindError (NamesT String m)
 
 functionNames :: InfiniteList String
 functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
