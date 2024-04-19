@@ -1,12 +1,12 @@
 
 module Lambda.Type.Builtins(
-                            listType,
+                            groundType, listType,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
 import Lambda.Type (TType(..))
-import Lambda.Type.Relation (Relation(..), runRelation)
-import Lambda.Type.Functions (Lambda, lambda1)
+import Lambda.Type.Relation (Relation(..), identityRelation, runRelation)
+import Lambda.Type.Functions (Lambda(..), lambda1)
 import Lambda.Type.Error (KindError)
 import Lambda.Term (Term(..))
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
@@ -26,6 +26,9 @@ import Prelude
 indexNames :: InfiniteList String
 indexNames = intersperse (freshStrings "i" :| freshStrings "j" : freshStrings "k" : Nil)
 
+groundType :: forall m. Lambda m Relation
+groundType = Ground identityRelation
+
 listType :: forall m. MonadNames String m => MonadError KindError m => Lambda m Relation
 listType = lambda1 \r -> ado
     innerRelation <- withFreshName indexNames \i -> pure (elementwiseConstraint r i)
@@ -39,6 +42,11 @@ listType = lambda1 \r -> ado
 
 namedBuiltinsMap :: forall m. MonadNames String m => MonadError KindError m => Map String (Lambda m Relation)
 namedBuiltinsMap = Map.fromFoldable [
+                    Tuple "Int" groundType,
+                    Tuple "Float" groundType,
+                    Tuple "Double" groundType,
+                    Tuple "String" groundType,
+                    Tuple "Boolean" groundType,
                     Tuple "List" listType
                    ]
 
