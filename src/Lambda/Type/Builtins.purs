@@ -1,5 +1,8 @@
 
-module Lambda.Type.Builtins where
+module Lambda.Type.Builtins(
+                            listType,
+                            namedBuiltinsMap, allBuiltins
+                           ) where
 
 import Lambda.Type (TType(..))
 import Lambda.Type.Relation (Relation(..), runRelation)
@@ -9,9 +12,14 @@ import Lambda.Term (Term(..))
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
 import Lambda.Predicate (Predicate(..), equals)
 import Lambda.Monad.Names (class MonadNames, withFreshName, freshStrings)
+import Lambda.LookupMap (LookupMap)
+import Lambda.LookupMap (fromMap) as LookupMap
 
 import Data.List (List(..), (:))
+import Data.Map (Map)
+import Data.Map (fromFoldable) as Map
 import Data.NonEmpty ((:|))
+import Data.Tuple (Tuple(..))
 import Control.Monad.Error.Class (class MonadError)
 import Prelude
 
@@ -29,3 +37,10 @@ listType = lambda1 \r -> ado
                                  Operator "<" (Var i) (App (Var "length") xs) `Implies`
                                    runRelation r (Subscript xs (Var i)) (Subscript ys (Var i))
 
+namedBuiltinsMap :: forall m. MonadNames String m => MonadError KindError m => Map String (Lambda m Relation)
+namedBuiltinsMap = Map.fromFoldable [
+                    Tuple "List" listType
+                   ]
+
+allBuiltins :: forall m. MonadNames String m => MonadError KindError m => LookupMap String (Lambda m Relation)
+allBuiltins = LookupMap.fromMap namedBuiltinsMap
