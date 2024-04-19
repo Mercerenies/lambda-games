@@ -1,15 +1,13 @@
 
 module Lambda.Type.Functions(
                              Lambda(..), LambdaFunction,
-                             KindError(..),
                              getKind, assertKind, expectFunction, expectGround
                             ) where
 
 import Lambda.Type.Kind (TKind(..))
+import Lambda.Type.Error (KindError(..))
 
 import Prelude
-import Data.Generic.Rep (class Generic)
-import Data.Show.Generic (genericShow)
 import Control.Monad.Error.Class (class MonadError, throwError)
 
 -- Very simple lambda calculus built on top of the type system, so we
@@ -17,14 +15,6 @@ import Control.Monad.Error.Class (class MonadError, throwError)
 data Lambda r = Ground r | Function { domain :: TKind, codomain :: TKind, body :: LambdaFunction r }
 
 type LambdaFunction r = forall m. MonadError KindError m => Lambda r -> m (Lambda r)
-
-newtype KindError = KindError { expected :: TKind, actual :: TKind }
-
-derive instance Eq KindError
-derive instance Generic KindError _
-
-instance Show KindError where
-    show err = genericShow err
 
 getKind :: forall r. Lambda r -> TKind
 getKind (Ground _) = Ty
