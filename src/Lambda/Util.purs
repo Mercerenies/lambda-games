@@ -1,7 +1,8 @@
 
 module Lambda.Util(
                    toList, toUnfoldable,
-                   fromChars, guarded
+                   fromChars, guarded,
+                   modifyError
                   ) where
 
 import Data.String.CodeUnits (fromCharArray)
@@ -9,8 +10,11 @@ import Data.List (List(..), (:))
 import Data.List (toUnfoldable) as List
 import Data.Foldable (class Foldable, foldr)
 import Data.Unfoldable (class Unfoldable)
+import Data.Either (Either(..))
 import Control.Alternative (guard)
 import Control.MonadPlus (class MonadPlus)
+import Control.Monad.Error.Class (class MonadError, throwError)
+import Control.Monad.Except.Trans (ExceptT, runExceptT)
 import Prelude
 
 toList :: forall f a. Foldable f => f a -> List a
@@ -28,3 +32,10 @@ guarded p ma = do
   a <- ma
   guard $ p a
   pure a
+
+modifyError :: forall m e e' a. MonadError e' m => (e -> e') -> ExceptT e m a -> m a
+modifyError f ema = do
+  ma <- runExceptT ema
+  case ma of
+    Left e -> throwError (f e)
+    Right a -> pure a
