@@ -24,7 +24,7 @@ data TType = TVar String
            | TGround String
            | TApp TType TType
            | TArrow TType TType
-           | TContextArrow TType TType
+--           | TContextArrow TType TType
            | TForall String TType
 
 derive instance Eq TType
@@ -45,7 +45,7 @@ substitute x t (TVar y) | x == y = t
 substitute _ _ (TGround g) = TGround g
 substitute x t (TArrow t1 t2) = TArrow (substitute x t t1) (substitute x t t2)
 substitute x t (TApp t1 t2) = TApp (substitute x t t1) (substitute x t t2)
-substitute x t (TContextArrow t1 t2) = TContextArrow (substitute x t t1) (substitute x t t2)
+--substitute x t (TContextArrow t1 t2) = TContextArrow (substitute x t t1) (substitute x t t2)
 substitute x t (TForall y t1) | x == y = TForall y t1
                               | otherwise = TForall y (substitute x t t1)
 
@@ -54,7 +54,7 @@ freeVariables (TVar x) = singleton x
 freeVariables (TGround _) = Nil
 freeVariables (TArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
 freeVariables (TApp t1 t2) = nub $ freeVariables t1 <> freeVariables t2
-freeVariables (TContextArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
+--freeVariables (TContextArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
 freeVariables (TForall x t) = filter (_ /= x) $ freeVariables t
 
 isClosed :: TType -> Boolean
@@ -97,10 +97,10 @@ prettyShowPrec n (TArrow left right) =
     let left' = prettyShowPrec arrowLeftPrecedence left
         right' = prettyShowPrec arrowRightPrecedence right in
     parenthesizeIf (n >= arrowLeftPrecedence) $ left' <> " -> " <> right'
-prettyShowPrec n (TContextArrow left right) =
-    let left' = prettyShowPrec arrowLeftPrecedence left
-        right' = prettyShowPrec arrowRightPrecedence right in
-    parenthesizeIf (n >= arrowLeftPrecedence) $ left' <> " => " <> right'
+--prettyShowPrec n (TContextArrow left right) =
+--    let left' = prettyShowPrec arrowLeftPrecedence left
+--        right' = prettyShowPrec arrowRightPrecedence right in
+--    parenthesizeIf (n >= arrowLeftPrecedence) $ left' <> " => " <> right'
 prettyShowPrec n (TForall v x) =
     let x' = prettyShowPrec forallPrecedence x in
     parenthesizeIf (n >= arrowLeftPrecedence) $ "∀" <> v <> ". " <> x'
@@ -112,7 +112,7 @@ suggestedVariableName (TVar s) = s
 suggestedVariableName (TGround s) = suggestedGroundVariableName s
 suggestedVariableName (TApp left _) = suggestedVariableName left
 suggestedVariableName (TArrow _ _) = "f" -- short for "function"
-suggestedVariableName (TContextArrow _ rhs) = suggestedVariableName rhs
+--suggestedVariableName (TContextArrow _ rhs) = suggestedVariableName rhs
 suggestedVariableName (TForall _ t) = suggestedVariableName t
 
 suggestedGroundVariableName :: String -> String
@@ -125,11 +125,11 @@ suggestedGroundVariableName s = toLower s
 genTType :: Gen TType
 genTType = genTType'
     where genTType'' size
-              | size > 1 = resize (_ - 1) (oneOf (genArrow :| genContextArrow : genForall : Nil))
+              | size > 1 = resize (_ - 1) (oneOf (genArrow :| {- genContextArrow : -} genForall : Nil))
               | otherwise = genVar `choose` genGround
           genTType' = sized \size -> genTType'' size
           genArrow = defer \_ -> lift2 TArrow genTType' genTType'
-          genContextArrow = defer \_ -> lift2 TContextArrow genTType' genTType'
+--          genContextArrow = defer \_ -> lift2 TContextArrow genTType' genTType'
           genForall = defer \_ -> lift2 TForall arbitrary genTType'
           genVar = defer \_ -> TVar <$> arbitrary
           genGround = defer \_ -> TGround <$> arbitrary

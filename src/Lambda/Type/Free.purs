@@ -28,7 +28,6 @@ import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError
 import Control.Monad.Reader.Trans (ReaderT, runReaderT)
 import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, asks)
 import Prelude
-import Effect.Exception.Unsafe (unsafeThrow)
 
 -- The type that Lambda functions (at the type level) must run in (for
 -- underlying monad m).
@@ -85,8 +84,8 @@ relationifyWithBindings bindings (TArrow a b) = do
     Relation rb <- relationifyWithBindings bindings b >>= expectGround
     pure $ Ground $ Relation \left right -> Forall a1 a $ Forall a2 a $
                                             ra (Var a1) (Var a2) `Implies` rb (App left (Var a1)) (App right (Var a2))
-relationifyWithBindings _ (TContextArrow _ _) =
-    unsafeThrow "Not supported yet"
+--relationifyWithBindings _ (TContextArrow _ _) =
+--    unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) = do
   withName2 x \x1 x2 -> do
     withFreshName functionNames \f -> do
@@ -109,7 +108,3 @@ describeFreeTheoremWith simplifier builtins t = runLambdaContextT fullDescriptio
 describeFreeTheorem :: LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->
                        TType -> Either TypeError String
 describeFreeTheorem = describeFreeTheoremWith identity
-
--- Add product types, possibly sum types
--- Context types
--- Explore mu-recursive types

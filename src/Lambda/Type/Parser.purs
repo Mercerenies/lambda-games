@@ -66,8 +66,8 @@ arrowExpression = ado
       skipSpaces
       rhs <- defer \_ -> expression
       in ctor lhs rhs
-    where arrowType = TArrow <$ (string "->" <|> string "→") <|>
-                      TContextArrow <$ (string "=>" <|> string "⇒")
+    where arrowType = TArrow <$ (string "->" <|> string "→") {- <|>
+                      TContextArrow <$ (string "=>" <|> string "⇒") -}
 
 expression :: forall m. Monad m => ParserT String m TType
 expression = try arrowExpression <|> appExpression
