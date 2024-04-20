@@ -27,6 +27,7 @@ to generate this file without the comments in this block.
   , "lists"
   , "maybe"
   , "mmorph"
+  , "newtype"
   , "node-event-emitter"
   , "node-readline"
   , "nonempty"

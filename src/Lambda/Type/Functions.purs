@@ -6,7 +6,7 @@ module Lambda.Type.Functions(
                             ) where
 
 import Lambda.Type.Kind (TKind(..))
-import Lambda.Type.Error (KindError(..))
+import Lambda.Type.Error (class FromKindError, kindError)
 
 import Prelude
 import Control.Monad.Error.Class (class MonadError, throwError)
@@ -21,29 +21,29 @@ getKind :: forall m r. Lambda m r -> TKind
 getKind (Ground _) = Ty
 getKind (Function { domain, codomain }) = domain `KArrow` codomain
 
-assertKind :: forall m. MonadError KindError m => TKind -> TKind -> m Unit
+assertKind :: forall e m. FromKindError e => MonadError e m => TKind -> TKind -> m Unit
 assertKind expected actual
     | expected == actual = pure unit
-    | otherwise = throwError $ KindError { expected, actual }
+    | otherwise = throwError $ kindError { expected, actual }
 
-expectFunction :: forall m r. MonadError KindError m => TKind -> TKind -> Lambda m r -> m (LambdaFunction m r)
+expectFunction :: forall e m r. FromKindError e => MonadError e m => TKind -> TKind -> Lambda m r -> m (LambdaFunction m r)
 expectFunction domain codomain =
     case _ of
-      Ground _ -> throwError $ KindError {
+      Ground _ -> throwError $ kindError {
                     expected: domain `KArrow` codomain,
                     actual: Ty
                   }
       f @ (Function { body }) -> body <$ assertKind (getKind f) (domain `KArrow` codomain)
 
-expectGround :: forall m r. MonadError KindError m => Lambda m r -> m r
+expectGround :: forall e m r. FromKindError e => MonadError e m => Lambda m r -> m r
 expectGround (Ground r) = pure r
-expectGround f = throwError $ KindError {
+expectGround f = throwError $ kindError {
                     expected: Ty,
                     actual: getKind f
                   }
 
 -- Helper for producing lambdas of kind (Type -> Type)
-lambda1 :: forall r m. MonadError KindError m => (r -> m r) -> Lambda m r
+lambda1 :: forall e m r. FromKindError e => MonadError e m => (r -> m r) -> Lambda m r
 lambda1 f = Function { domain: Ty, codomain: Ty, body }
     where body :: LambdaFunction m r
           body a = do

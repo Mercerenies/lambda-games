@@ -1,7 +1,8 @@
 
 module Lambda.Type.Error(
                          TypeError(..),
-                         KindError(..)
+                         KindError(..),
+                         class FromKindError, fromKindError, kindError
                         ) where
 
 import Lambda.Type.Kind (TKind)
@@ -14,6 +15,12 @@ data TypeError = UnboundVariable String
 
 newtype KindError = KindError { expected :: TKind, actual :: TKind }
 
+class FromKindError e where
+    fromKindError :: KindError -> e
+
+kindError :: forall e. FromKindError e => { expected :: TKind, actual :: TKind } -> e
+kindError = fromKindError <<< KindError
+
 derive instance Eq KindError
 derive instance Eq TypeError
 
@@ -24,3 +31,9 @@ instance Show TypeError where
 instance Show KindError where
     show (KindError { expected, actual }) =
         "Kind error: Expected " <> prettyShow expected <> ", actual " <> prettyShow actual
+
+instance FromKindError KindError where
+    fromKindError = identity
+
+instance FromKindError TypeError where
+    fromKindError = MismatchedKinds
