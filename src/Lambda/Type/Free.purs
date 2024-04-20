@@ -60,6 +60,9 @@ functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings
 relationify :: forall m. MonadError TypeError m => TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
 relationify = relationifyWithBindings Nil
 
+appSection :: Term -> Term
+appSection x = OperatorSectionLeft "$" x
+
 relationifyWithBindings :: forall m. MonadError TypeError m =>
                            List (Tuple String Relation) -> TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
 relationifyWithBindings bindings (TVar x)
@@ -83,7 +86,7 @@ relationifyWithBindings bindings (TArrow a b) = do
     Relation ra <- relationifyWithBindings bindings a >>= expectGround
     Relation rb <- relationifyWithBindings bindings b >>= expectGround
     pure $ Ground $ Relation \left right -> Forall a1 a $ Forall a2 a $
-                                            ra (Var a1) (Var a2) `Implies` rb (App left (Var a1)) (App right (Var a2))
+                                            ra (Var a1) (Var a2) `Implies` rb (App (appSection (Var a1)) left) (App (appSection (Var a2)) right)
 --relationifyWithBindings _ (TContextArrow _ _) =
 --    unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) = do
