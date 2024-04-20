@@ -15,6 +15,7 @@ import Data.Show.Generic (genericShow)
 data Predicate = Operator String Term Term
                | Implies Predicate Predicate
                | And Predicate Predicate
+               | Or Predicate Predicate
                | Forall String TType Predicate
 
 derive instance Eq Predicate
@@ -34,6 +35,7 @@ substitute x t = go
     where go (Operator op lhs rhs) = Operator op (Term.substitute x t lhs) (Term.substitute x t rhs)
           go (Implies lhs rhs) = Implies (go lhs) (go rhs)
           go (And lhs rhs) = And (go lhs) (go rhs)
+          go (Or lhs rhs) = Or (go lhs) (go rhs)
           go (Forall x' ttype body)
               | x == x' = Forall x' ttype body
               | otherwise = Forall x' ttype $ go body
@@ -47,8 +49,11 @@ impliesRightPrecedence = 1
 impliesLeftPrecedence :: Int
 impliesLeftPrecedence = 2
 
+orPrecedence :: Int
+orPrecedence = 3
+
 andPrecedence :: Int
-andPrecedence = 3
+andPrecedence = 4
 
 prettyShowPrec :: Int -> Predicate -> String
 prettyShowPrec _ (Operator op a b) = prettyShow a <> " " <> op <> " " <> prettyShow b
@@ -56,6 +61,10 @@ prettyShowPrec n (Implies lhs rhs) =
     let lhs' = prettyShowPrec impliesLeftPrecedence lhs
         rhs' = prettyShowPrec impliesRightPrecedence rhs in
     parenthesizeIf (n >= impliesLeftPrecedence) $ lhs' <> " => " <> rhs'
+prettyShowPrec n (Or lhs rhs) =
+    let lhs' = prettyShowPrec orPrecedence lhs
+        rhs' = prettyShowPrec orPrecedence rhs in
+    parenthesizeIf (n > orPrecedence) $ lhs' <> " ∨ " <> rhs'
 prettyShowPrec n (And lhs rhs) =
     let lhs' = prettyShowPrec andPrecedence lhs
         rhs' = prettyShowPrec andPrecedence rhs in

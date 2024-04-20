@@ -20,6 +20,7 @@ postOrderTraverseM f = go
           recurse (Operator op a b) = pure (Operator op a b)
           recurse (Implies lhs rhs) = lift2 Implies (go lhs) (go rhs)
           recurse (And lhs rhs) = lift2 And (go lhs) (go rhs)
+          recurse (Or lhs rhs) = lift2 Or (go lhs) (go rhs)
           recurse (Forall s ttype pred) = Forall s ttype <$> go pred
 
 postOrderTraverse :: (Predicate -> Predicate) -> Predicate -> Predicate
