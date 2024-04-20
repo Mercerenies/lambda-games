@@ -18,6 +18,7 @@ import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError
 import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, ask, local)
 import Control.Monad.Morph (class MFunctor, class MMonad, hoist)
 import Control.Monad.Except.Trans (ExceptT)
+import Control.Monad.Reader.Trans (ReaderT)
 import Safe.Coerce (coerce)
 
 class Monad m <= MonadNames s m | m -> s where
@@ -78,6 +79,10 @@ instance (MonadReader r m) => MonadReader r (NamesT s m) where
 -- Instances that commute MonadNames over types.
 
 instance MonadNames s m => MonadNames s (ExceptT e m) where
+    withNameBound s = hoist (withNameBound s)
+    askBindings = lift askBindings
+
+instance MonadNames s m => MonadNames s (ReaderT r m) where
     withNameBound s = hoist (withNameBound s)
     askBindings = lift askBindings
 
