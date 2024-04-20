@@ -14,6 +14,8 @@ data Term = Var String
           | App Term Term
           | TypeApp Term Term
           | Subscript Term Term
+          | OperatorSectionLeft String Term
+          | OperatorSectionRight Term String
 
 derive instance Eq Term
 derive instance Generic Term _
@@ -30,6 +32,8 @@ substitute x t (Var x') | x == x' = t
 substitute x t (App a b) = App (substitute x t a) (substitute x t b)
 substitute x t (TypeApp a b) = TypeApp (substitute x t a) (substitute x t b)
 substitute x t (Subscript a b) = Subscript (substitute x t a) (substitute x t b)
+substitute x t (OperatorSectionLeft o a) = OperatorSectionLeft o (substitute x t a)
+substitute x t (OperatorSectionRight a o) = OperatorSectionRight (substitute x t a) o
 
 defaultPrecedence :: Int
 defaultPrecedence = 0
@@ -59,3 +63,9 @@ prettyShowPrec n (Subscript left right) =
     -- TODO We use TypeApp precedence here, since the two operators
     -- are identical. We might change this later.
     parenthesizeIf (n > typeAppPrecedence) $ left' <> "[" <> right' <> "]"
+prettyShowPrec _ (OperatorSectionLeft o a) =
+    let a' = prettyShowPrec defaultPrecedence a in
+    parenthesizeIf true $ o <> " " <> a'
+prettyShowPrec _ (OperatorSectionRight a o) =
+    let a' = prettyShowPrec defaultPrecedence a in
+    parenthesizeIf true $ a' <> " " <> o
