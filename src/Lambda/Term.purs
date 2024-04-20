@@ -41,7 +41,7 @@ appRightPrecedence :: Int
 appRightPrecedence = 2
 
 typeAppPrecedence :: Int
-typeAppPrecedence = 3
+typeAppPrecedence = 3 -- TODO Show TypeApp with Haskell's TypeApplication syntax
 
 prettyShowPrec :: Int -> Term -> String
 prettyShowPrec _ (Var x) = x
