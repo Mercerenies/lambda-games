@@ -8,7 +8,7 @@ module Lambda.Type.Free(
 import Lambda.Type (TType(..), suggestedVariableName)
 import Lambda.Type.Relation (Relation(..), identityRelation)
 import Lambda.Type.Error (TypeError(..))
-import Lambda.Type.Functions (Lambda(..), expectGround)
+import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
 import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate(..), equals)
 import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesT, class MonadNames)
@@ -68,7 +68,15 @@ relationifyWithBindings bindings (TVar x)
 relationifyWithBindings _ (TGround _) =
     -- For now, assume all ground types are just the identity and
     -- don't have more complex relations. We will update this later.
-    pure (Ground identityRelation)
+    pure (Ground identityRelation) -- TODO
+relationifyWithBindings bindings (TApp ff aa) = do
+  f <- relationifyWithBindings bindings ff
+  a <- relationifyWithBindings bindings aa
+  case f of
+    Ground _ -> throwError $ ExpectedTypeFunction ff
+    Function { domain, codomain: _, body: f' } -> do
+      assertKind domain (getKind a)
+      f' a
 relationifyWithBindings bindings (TArrow a b) = do
   withName2 (suggestedVariableName a) $ \a1 a2 -> do
     Relation ra <- relationifyWithBindings bindings a >>= expectGround

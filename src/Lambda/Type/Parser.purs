@@ -6,7 +6,7 @@ import Lambda.Util (fromChars, guarded)
 
 import Prelude hiding (between)
 import Parsing (ParserT, runParserT, ParseError)
-import Parsing.Combinators (many, try, (<?>), between)
+import Parsing.Combinators (many, try, (<?>), between, sepEndBy1)
 import Parsing.String (char, string, eof)
 import Parsing.String.Basic (letter, digit, space, skipSpaces)
 import Control.Apply (lift2)
@@ -16,6 +16,7 @@ import Control.Monad.Rec.Class (class MonadRec)
 import Data.List ((:))
 import Data.Array (notElem)
 import Data.Foldable (foldr)
+import Data.Semigroup.Foldable (foldl1)
 import Data.Maybe (maybe)
 import Data.String.CodePoints (codePointAt, codePointFromChar)
 import Data.CodePoint.Unicode (isLower, isUpper)
@@ -54,9 +55,12 @@ forallExpression = ado
 basicExpression :: forall m. Monad m => ParserT String m TType
 basicExpression = var <|> groundTerm <|> forallExpression <|> between (char '(') (char ')') (defer \_ -> expression)
 
+appExpression :: forall m. Monad m => ParserT String m TType
+appExpression = foldl1 TApp <$> sepEndBy1 basicExpression skipSpaces
+
 arrowExpression :: forall m. Monad m => ParserT String m TType
 arrowExpression = ado
-      lhs <- basicExpression
+      lhs <- appExpression
       skipSpaces
       ctor <- arrowType
       skipSpaces
@@ -66,7 +70,7 @@ arrowExpression = ado
                       TContextArrow <$ (string "=>" <|> string "⇒")
 
 expression :: forall m. Monad m => ParserT String m TType
-expression = try arrowExpression <|> basicExpression
+expression = try arrowExpression <|> appExpression
 
 expressionParser :: forall m. Monad m => ParserT String m TType
 expressionParser = between skipSpaces (skipSpaces *> eof) expression

@@ -5,6 +5,7 @@ module Lambda.Type.Error(
                          class FromKindError, fromKindError, kindError
                         ) where
 
+import Lambda.Type (TType)
 import Lambda.Type.Kind (TKind)
 import Lambda.PrettyShow (prettyShow)
 
@@ -12,6 +13,7 @@ import Prelude
 
 data TypeError = UnboundVariable String
                | MismatchedKinds KindError
+               | ExpectedTypeFunction TType
 
 newtype KindError = KindError { expected :: TKind, actual :: TKind }
 
@@ -27,6 +29,7 @@ derive instance Eq TypeError
 instance Show TypeError where
     show (UnboundVariable s) = "Unbound type variable: " <> s
     show (MismatchedKinds err) = show err
+    show (ExpectedTypeFunction err) = "Expected type-level function, got " <> prettyShow err
 
 instance Show KindError where
     show (KindError { expected, actual }) =

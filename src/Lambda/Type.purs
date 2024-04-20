@@ -22,6 +22,7 @@ import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary, arbitrary,
 
 data TType = TVar String
            | TGround String
+           | TApp TType TType
            | TArrow TType TType
            | TContextArrow TType TType
            | TForall String TType
@@ -43,6 +44,7 @@ substitute x t (TVar y) | x == y = t
                         | otherwise = TVar y
 substitute _ _ (TGround g) = TGround g
 substitute x t (TArrow t1 t2) = TArrow (substitute x t t1) (substitute x t t2)
+substitute x t (TApp t1 t2) = TApp (substitute x t t1) (substitute x t t2)
 substitute x t (TContextArrow t1 t2) = TContextArrow (substitute x t t1) (substitute x t t2)
 substitute x t (TForall y t1) | x == y = TForall y t1
                               | otherwise = TForall y (substitute x t t1)
@@ -51,6 +53,7 @@ freeVariables :: TType -> List String
 freeVariables (TVar x) = singleton x
 freeVariables (TGround _) = Nil
 freeVariables (TArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
+freeVariables (TApp t1 t2) = nub $ freeVariables t1 <> freeVariables t2
 freeVariables (TContextArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
 freeVariables (TForall x t) = filter (_ /= x) $ freeVariables t
 
@@ -77,9 +80,19 @@ arrowRightPrecedence = 2
 arrowLeftPrecedence :: Int
 arrowLeftPrecedence = 3
 
+appLeftPrecedence :: Int
+appLeftPrecedence = 4
+
+appRightPrecedence :: Int
+appRightPrecedence = 5
+
 prettyShowPrec :: Int -> TType -> String
 prettyShowPrec _ (TVar x) = x
 prettyShowPrec _ (TGround x) = x
+prettyShowPrec n (TApp left right) =
+    let left' = prettyShowPrec appLeftPrecedence left
+        right' = prettyShowPrec appRightPrecedence right in
+    parenthesizeIf (n >= arrowRightPrecedence) $ left' <> " " <> right'
 prettyShowPrec n (TArrow left right) =
     let left' = prettyShowPrec arrowLeftPrecedence left
         right' = prettyShowPrec arrowRightPrecedence right in
@@ -97,6 +110,7 @@ prettyShowPrec n (TForall v x) =
 suggestedVariableName :: TType -> String
 suggestedVariableName (TVar s) = s
 suggestedVariableName (TGround s) = suggestedGroundVariableName s
+suggestedVariableName (TApp left _) = suggestedVariableName left
 suggestedVariableName (TArrow _ _) = "f" -- short for "function"
 suggestedVariableName (TContextArrow _ rhs) = suggestedVariableName rhs
 suggestedVariableName (TForall _ t) = suggestedVariableName t
