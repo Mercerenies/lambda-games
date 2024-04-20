@@ -6,7 +6,7 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
-import Lambda.Type.Relation (Relation(..), identityRelation)
+import Lambda.Type.Relation (Relation(..))
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
 import Lambda.Term (Term(..))
@@ -15,17 +15,18 @@ import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withNa
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
 import Lambda.PrettyShow (prettyShow)
 import Lambda.LookupMap (LookupMap)
+import Lambda.LookupMap (lookup) as LookupMap
 
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..))
 import Data.List (List(..), (:))
 import Data.NonEmpty ((:|))
-import Data.Foldable (lookup)
+import Data.Foldable (lookup) as Fold
 import Data.Either (Either)
 import Data.Newtype (class Newtype)
 import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError)
 import Control.Monad.Reader.Trans (ReaderT, runReaderT)
-import Control.Monad.Reader.Class (class MonadAsk, class MonadReader)
+import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, asks)
 import Prelude
 import Effect.Exception.Unsafe (unsafeThrow)
 
@@ -63,12 +64,13 @@ relationify = relationifyWithBindings Nil
 relationifyWithBindings :: forall m. MonadError TypeError m =>
                            List (Tuple String Relation) -> TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
 relationifyWithBindings bindings (TVar x)
-    | Just rel <- lookup x bindings = pure (Ground rel)
+    | Just rel <- Fold.lookup x bindings = pure (Ground rel)
     | otherwise = throwError $ UnboundVariable x
-relationifyWithBindings _ (TGround _) =
-    -- For now, assume all ground types are just the identity and
-    -- don't have more complex relations. We will update this later.
-    pure (Ground identityRelation) -- TODO
+relationifyWithBindings _ (TGround x) = do
+    lam <- asks $ LookupMap.lookup x
+    case lam of
+      Nothing -> throwError $ UnboundGroundTerm x
+      Just expr -> pure expr
 relationifyWithBindings bindings (TApp ff aa) = do
   f <- relationifyWithBindings bindings ff
   a <- relationifyWithBindings bindings aa

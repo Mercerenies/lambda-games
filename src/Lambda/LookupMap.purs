@@ -1,11 +1,12 @@
 
 module Lambda.LookupMap(
-                        LookupMap(..), runLookupMap, singleton, fromMap
+                        LookupMap(..), runLookupMap, lookup, singleton, fromMap
                        ) where
 
 import Prelude
 import Data.Maybe (Maybe(..))
-import Data.Map (Map, lookup)
+import Data.Map (Map)
+import Data.Map (lookup) as Map
 import Control.MonadPlus (class MonadPlus, class Alternative, class Alt, class Plus, alt)
 
 -- Basic data structure isomorphic to (s -> Maybe a), but with lifted
@@ -42,8 +43,11 @@ instance MonadPlus (LookupMap s)
 runLookupMap :: forall s a. LookupMap s a -> s -> Maybe a
 runLookupMap (LookupMap aa) = aa
 
+lookup :: forall s a. s -> LookupMap s a -> Maybe a
+lookup = flip runLookupMap
+
 singleton :: forall s a. Eq s => s -> a -> LookupMap s a
 singleton k v = LookupMap \k' -> if k == k' then Just v else Nothing
 
 fromMap :: forall s a. Ord s => Map s a -> LookupMap s a
-fromMap m = LookupMap \k -> lookup k m
+fromMap m = LookupMap \k -> Map.lookup k m

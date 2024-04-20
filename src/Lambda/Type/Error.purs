@@ -12,6 +12,7 @@ import Lambda.PrettyShow (prettyShow)
 import Prelude
 
 data TypeError = UnboundVariable String
+               | UnboundGroundTerm String
                | MismatchedKinds KindError
                | ExpectedTypeFunction TType
 
@@ -28,6 +29,7 @@ derive instance Eq TypeError
 
 instance Show TypeError where
     show (UnboundVariable s) = "Unbound type variable: " <> s
+    show (UnboundGroundTerm s) = "Unknown type: " <> s
     show (MismatchedKinds err) = show err
     show (ExpectedTypeFunction err) = "Expected type-level function, got " <> prettyShow err
 
