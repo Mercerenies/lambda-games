@@ -9,7 +9,7 @@ import Lambda.Type (TType(..), suggestedVariableName, functionNames)
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
-import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin(..))
+import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin(..), variableNamer)
 import Lambda.Type.BuiltinsMap (lookup) as BuiltinsMap
 import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate)
@@ -77,7 +77,8 @@ relationifyWithBindings bindings (TApp ff aa) = do
       assertKind domain (getKind a)
       f' a
 relationifyWithBindings bindings (TArrow a b) = do
-  withFreshName2 (suggestedVariableName freshStrings a) $ \a1 a2 -> do
+  namer <- asks variableNamer
+  withFreshName2 (suggestedVariableName namer a) $ \a1 a2 -> do
     ra <- relationifyWithBindings bindings a >>= expectGround
     rb <- relationifyWithBindings bindings b >>= expectGround
     pure $ Ground $ rForall a1 a $ rForall a2 a $
@@ -98,10 +99,12 @@ describeFreeTheoremWith :: (Predicate -> Predicate) ->
                            List String -> TType -> Either TypeError String
 describeFreeTheoremWith simplifier builtins reservedNames t = runLambdaContextT fullDescription builtins reservedNames
   where fullDescription :: LambdaContextT (Either TypeError) String
-        fullDescription = withFreshName (suggestedVariableName freshStrings t) $ \a -> do
-         r <- relationify t >>= expectGround
-         let description = prettyShow $ simplifier (runRelation r (Var a) (Var a))
-         pure $ a <> " ~ " <> a <> " if " <> description
+        fullDescription = do
+          namer <- asks variableNamer
+          withFreshName (suggestedVariableName namer t) $ \a -> do
+            r <- relationify t >>= expectGround
+            let description = prettyShow $ simplifier (runRelation r (Var a) (Var a))
+            pure $ a <> " ~ " <> a <> " if " <> description
 
 describeFreeTheorem :: BuiltinsMap (LambdaContextT (Either TypeError)) ->
                        List String -> TType -> Either TypeError String

@@ -22,7 +22,6 @@ import Data.Map (fromFoldable) as Map
 import Data.NonEmpty ((:|))
 import Data.Tuple (Tuple(..))
 import Data.Bifunctor (bimap)
-import Data.String.Common (toLower)
 import Control.Monad.Error.Class (class MonadError)
 import Prelude
 
