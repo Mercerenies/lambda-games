@@ -8,12 +8,11 @@ module Lambda.Type.Builtins(
 import Lambda.Type.Relation (Relation, identityRelation)
 import Lambda.Type.Functions (Lambda(..), lambda1)
 import Lambda.Type.Error (class FromKindError)
-import Lambda.Type.BuiltinsMap (BuiltinsMap(..))
+import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
 import Lambda.Term (Term(..), allVariables)
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
 import Lambda.Util.InfiniteList (find) as InfiniteList
 import Lambda.Monad.Names (class MonadNames, freshStrings)
-import Lambda.LookupMap (LookupMap)
 import Lambda.LookupMap (fromMap) as LookupMap
 
 import Data.List (List(..), (:))
@@ -55,15 +54,15 @@ listType = lambda1 \r -> pure $ bimap liftToFmap liftToFmap r
     where liftToFmap :: (Term -> Term) -> Term -> Term
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
-namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Lambda m Relation)
+namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
-                    Tuple "Int" basicType,
-                    Tuple "Float" basicType,
-                    Tuple "Double" basicType,
-                    Tuple "String" basicType,
-                    Tuple "Boolean" basicType,
-                    Tuple "List" listType
+                    Tuple "Int" $ Builtin { relation: basicType },
+                    Tuple "Float" $ Builtin { relation: basicType },
+                    Tuple "Double" $ Builtin { relation: basicType },
+                    Tuple "String" $ Builtin { relation: basicType },
+                    Tuple "Boolean" $ Builtin { relation: basicType },
+                    Tuple "List" $ Builtin { relation: listType }
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
-allBuiltins = BuiltinsMap { lookupMap: LookupMap.fromMap namedBuiltinsMap }
+allBuiltins = BuiltinsMap (LookupMap.fromMap namedBuiltinsMap)

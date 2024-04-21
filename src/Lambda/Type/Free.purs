@@ -9,7 +9,7 @@ import Lambda.Type (TType(..), suggestedVariableName, functionNames)
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
-import Lambda.Type.BuiltinsMap (BuiltinsMap)
+import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin(..))
 import Lambda.Type.BuiltinsMap (lookup) as BuiltinsMap
 import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate)
@@ -67,7 +67,7 @@ relationifyWithBindings _ (TGround x) = do
     lam <- asks $ BuiltinsMap.lookup x
     case lam of
       Nothing -> throwError $ UnboundGroundTerm x
-      Just expr -> pure expr
+      Just (Builtin { relation }) -> pure relation
 relationifyWithBindings bindings (TApp ff aa) = do
   f <- relationifyWithBindings bindings ff
   a <- relationifyWithBindings bindings aa
