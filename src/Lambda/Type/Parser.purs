@@ -52,8 +52,16 @@ forallExpression = ado
       in foldr TForall expr xs
     where forallQualifier = string "∀" <|> try (string "forall" <* space)
 
+listExpression :: forall m. Monad m => ParserT String m TType
+listExpression = TApp (TGround "List") <$>
+                 between (char '[' *> skipSpaces) (skipSpaces <* char ']') (defer \_ -> expression)
+
 basicExpression :: forall m. Monad m => ParserT String m TType
-basicExpression = var <|> groundTerm <|> forallExpression <|> between (char '(') (char ')') (defer \_ -> expression)
+basicExpression = var <|>
+                  groundTerm <|>
+                  forallExpression <|>
+                  listExpression <|>
+                  between (char '(' *> skipSpaces) (skipSpaces <* char ')') (defer \_ -> expression)
 
 appExpression :: forall m. Monad m => ParserT String m TType
 appExpression = foldl1 TApp <$> sepEndBy1 basicExpression skipSpaces
