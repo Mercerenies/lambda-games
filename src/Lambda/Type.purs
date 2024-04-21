@@ -89,6 +89,9 @@ appRightPrecedence = 5
 prettyShowPrec :: Int -> TType -> String
 prettyShowPrec _ (TVar x) = x
 prettyShowPrec _ (TGround x) = x
+prettyShowPrec _ (TApp (TGround "List") right) =
+    -- Special case to pretty-print list types
+    "[" <> prettyShowPrec defaultPrecedence right <> "]"
 prettyShowPrec n (TApp left right) =
     let left' = prettyShowPrec appLeftPrecedence left
         right' = prettyShowPrec appRightPrecedence right in
