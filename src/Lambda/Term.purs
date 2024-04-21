@@ -16,6 +16,7 @@ data Term = Var String
           | Subscript Term Term
           | OperatorSectionLeft String Term
           | OperatorSectionRight Term String
+          | Fn String Term -- Lambda abstraction
 
 derive instance Eq Term
 derive instance Generic Term _
@@ -34,6 +35,9 @@ substitute x t (TypeApp a b) = TypeApp (substitute x t a) (substitute x t b)
 substitute x t (Subscript a b) = Subscript (substitute x t a) (substitute x t b)
 substitute x t (OperatorSectionLeft o a) = OperatorSectionLeft o (substitute x t a)
 substitute x t (OperatorSectionRight a o) = OperatorSectionRight (substitute x t a) o
+substitute x t (Fn x' body)
+    | x == x' = Fn x' t
+    | otherwise = Fn x' (substitute x t body)
 
 defaultPrecedence :: Int
 defaultPrecedence = 0
@@ -69,3 +73,6 @@ prettyShowPrec _ (OperatorSectionLeft o a) =
 prettyShowPrec _ (OperatorSectionRight a o) =
     let a' = prettyShowPrec defaultPrecedence a in
     parenthesizeIf true $ a' <> " " <> o
+prettyShowPrec n (Fn var body) =
+    let body' = prettyShowPrec defaultPrecedence body in
+    parenthesizeIf (n > defaultPrecedence) $ "λ" <> var <> ". " <> body'

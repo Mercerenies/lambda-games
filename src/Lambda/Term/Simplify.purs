@@ -19,6 +19,7 @@ postOrderTraverseM f = go
           recurse (Subscript t1 t2) = Subscript <$> go t1 <*> go t2
           recurse (OperatorSectionLeft s t) = OperatorSectionLeft s <$> go t
           recurse (OperatorSectionRight t s) = OperatorSectionRight <$> go t <*> pure s
+          recurse (Fn x body) = Fn x <$> go body
 
 postOrderTraverse :: (Term -> Term) -> Term -> Term
 postOrderTraverse f = coerce <<< postOrderTraverseM (Identity <<< f)
