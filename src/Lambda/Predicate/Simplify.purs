@@ -1,7 +1,8 @@
 
 module Lambda.Predicate.Simplify(
                                  postOrderTraverseM, postOrderTraverse,
-                                 simplify, simplifyConstrainedEquality, simplifyTerms
+                                 simplify, simplifyConstrainedEquality, simplifyTerms,
+                                 alphaRenameQuantified
                                 ) where
 
 -- Miscellaneous simplifications that can be applied to predicates.
@@ -39,4 +40,12 @@ simplifyConstrainedEquality = postOrderTraverse go
 simplifyTerms :: (Term -> Term) -> Predicate -> Predicate
 simplifyTerms termSimplifier = postOrderTraverse go
     where go (Operator op a b) = Operator op (termSimplifier a) (termSimplifier b)
+          go x = x
+
+-- Note: This function does NOT check whether or not it's shadowing
+-- any other names. It's the caller's responsibility to make sure the
+-- rename is sensible.
+alphaRenameQuantified :: String -> String -> Predicate -> Predicate
+alphaRenameQuantified old new = postOrderTraverse go
+    where go (Forall v ttype body) | v == old = Forall new ttype (substitute v (Var new) body)
           go x = x
