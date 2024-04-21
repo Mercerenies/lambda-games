@@ -1,7 +1,7 @@
 
 module Lambda.Term(
                    Term(..),
-                   substitute
+                   substitute, freeVariables, allVariables
                   ) where
 
 import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
@@ -9,6 +9,8 @@ import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
 import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
+import Data.Set (Set)
+import Data.Set (singleton, delete, insert) as Set
 
 data Term = Var String
           | App Term Term
@@ -38,6 +40,24 @@ substitute x t (OperatorSectionRight a o) = OperatorSectionRight (substitute x t
 substitute x t (Fn x' body)
     | x == x' = Fn x' t
     | otherwise = Fn x' (substitute x t body)
+
+freeVariables :: Term -> Set String
+freeVariables (Var x) = Set.singleton x
+freeVariables (App a b) = freeVariables a <> freeVariables b
+freeVariables (TypeApp a b) = freeVariables a <> freeVariables b
+freeVariables (Subscript a b) = freeVariables a <> freeVariables b
+freeVariables (OperatorSectionLeft _ a) = freeVariables a
+freeVariables (OperatorSectionRight a _) = freeVariables a
+freeVariables (Fn x a) = Set.delete x (freeVariables a)
+
+allVariables :: Term -> Set String
+allVariables (Var x) = Set.singleton x
+allVariables (App a b) = allVariables a <> allVariables b
+allVariables (TypeApp a b) = allVariables a <> allVariables b
+allVariables (Subscript a b) = allVariables a <> allVariables b
+allVariables (OperatorSectionLeft _ a) = allVariables a
+allVariables (OperatorSectionRight a _) = allVariables a
+allVariables (Fn x a) = Set.insert x $ allVariables a
 
 defaultPrecedence :: Int
 defaultPrecedence = 0
