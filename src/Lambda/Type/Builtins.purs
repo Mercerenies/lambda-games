@@ -7,7 +7,7 @@ module Lambda.Type.Builtins(
 
 import Lambda.Type.Relation (Relation, identityRelation)
 import Lambda.Type.Functions (Lambda(..))
-import Lambda.Type.Functions.Factory (lambda1)
+import Lambda.Type.Functions.Factory (lambda1, lambda2)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
 import Lambda.Term (Term(..), allVariables)
@@ -65,6 +65,9 @@ listBuiltin = Builtin {
                 relation: listType,
                 nameStream: listNames
               }
+
+--tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
+--tuple2Type = lambda2 \ra rb -> ?a
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
