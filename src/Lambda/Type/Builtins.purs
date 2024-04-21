@@ -65,6 +65,3 @@ namedBuiltinsMap = Map.fromFoldable [
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => LookupMap String (Lambda m Relation)
 allBuiltins = LookupMap.fromMap namedBuiltinsMap
-
--- ///// Can we make Relation more complex, so it understands that, fundamentally, we'll eventually be an equals-sign relation and then do some higher-order stuff with that? I really, really want to write []'s free theorem in terms of fmap.
--- also, proper list [] parsing with brackets
