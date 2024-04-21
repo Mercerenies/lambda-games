@@ -19,6 +19,7 @@ postOrderTraverseM f = go
           recurse (App t1 t2) = App <$> go t1 <*> go t2
           recurse (OperatorSectionLeft s t) = OperatorSectionLeft s <$> go t
           recurse (OperatorSectionRight t s) = OperatorSectionRight <$> go t <*> pure s
+          recurse (OperatorApp a o b) = OperatorApp <$> go a <*> pure o <*> go b
           recurse (Fn x body) = Fn x <$> go body
 
 postOrderTraverse :: (Term -> Term) -> Term -> Term
