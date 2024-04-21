@@ -27,6 +27,11 @@ data PredicateZipper a b = PEquals a b |
 -- restricted so we can introspect on the values.
 type Relation = PredicateZipper (Term -> Term) (Term -> Term)
 
+-- Note: The Bifunctor, Biapply, and Biapplicative instances might
+-- look a little weird, but they do obey the corresponding typeclass
+-- laws. Proof of conformance is available (in Agda) at
+-- https://gist.github.com/Mercerenies/9c839c412a8b9324fb1c3085a2b41111
+
 instance Bifunctor PredicateZipper where
     bimap f g (PEquals a b) = PEquals (f a) (g b)
     bimap f g (PImplies lhs rhs) = PImplies lhs (bimap f g rhs)
