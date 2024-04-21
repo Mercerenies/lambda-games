@@ -8,7 +8,7 @@ module Lambda.Predicate.Simplify(
 
 import Lambda.Predicate (Predicate(..), substitute)
 import Lambda.Term (Term(..))
-import Lambda.Term.Simplify (simplify, postOrderTraverse) as TermSimplify
+import Lambda.Term.Simplify (simplify) as TermSimplify
 
 import Control.Apply (lift2)
 import Safe.Coerce (coerce)
@@ -37,6 +37,6 @@ simplifyConstrainedEquality = postOrderTraverse go
           go pred = pred
 
 simplifyTerms :: (Term -> Term) -> Predicate -> Predicate
-simplifyTerms simplifier = postOrderTraverse go
-    where go (Operator op a b) = Operator op (TermSimplify.postOrderTraverse simplifier a) (TermSimplify.postOrderTraverse simplifier b)
+simplifyTerms termSimplifier = postOrderTraverse go
+    where go (Operator op a b) = Operator op (termSimplifier a) (termSimplifier b)
           go x = x
