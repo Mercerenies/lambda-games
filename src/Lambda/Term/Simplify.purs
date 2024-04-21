@@ -1,14 +1,15 @@
 
 module Lambda.Term.Simplify(
                             postOrderTraverseM, postOrderTraverse,
-                            simplify, simplifyReversedApp
+                            simplify, simplifyReversedApp, simplifyEtaAbstraction
                            ) where
 
-import Lambda.Term (Term(..))
+import Lambda.Term (Term(..), freeVariables)
 
 import Prelude
 import Safe.Coerce (coerce)
 import Data.Identity (Identity(..))
+import Data.Set (member) as Set
 
 postOrderTraverseM :: forall m. Monad m => (Term -> m Term) -> Term -> m Term
 postOrderTraverseM f = go
@@ -25,7 +26,7 @@ postOrderTraverse :: (Term -> Term) -> Term -> Term
 postOrderTraverse f = coerce <<< postOrderTraverseM (Identity <<< f)
 
 simplify :: Term -> Term
-simplify = simplifyReversedApp
+simplify = simplifyReversedApp >>> simplifyEtaAbstraction
 
 -- This oddly specific simplification will eliminate the unnecessary
 -- ($ a) operator section (in favor of simpler syntax) when a function
@@ -34,4 +35,9 @@ simplify = simplifyReversedApp
 simplifyReversedApp :: Term -> Term
 simplifyReversedApp = postOrderTraverse $ case _ of
     App (OperatorSectionLeft "$" a) f -> App f a
+    other -> other
+
+simplifyEtaAbstraction :: Term -> Term
+simplifyEtaAbstraction = postOrderTraverse $ case _ of
+    Fn x (App f (Var x')) | x == x' && not (x `Set.member` freeVariables f) -> f
     other -> other
