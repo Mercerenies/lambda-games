@@ -2,7 +2,7 @@
 module Lambda.Monad.Names(
                           NamesT(), Names,
                           class MonadNames, withNameBound, askBindings,
-                          freshStrings, withFreshName, withName, withName2,
+                          freshStrings, withFreshName, withFreshName2,
                           runNamesTWith, runNamesT,
                           runNamesWith, runNames
                          ) where
@@ -97,11 +97,8 @@ withFreshName freshNameStream ma = do
   let unboundName = find (\name -> name `notElem` bindings) freshNameStream
   withNameBound unboundName (ma unboundName)
 
-withName :: forall m a. MonadNames String m => String -> (String -> m a) -> m a
-withName baseName = withFreshName (freshStrings baseName)
-
-withName2 :: forall m a. MonadNames String m => String -> (String -> String -> m a) -> m a
-withName2 baseName ma = withName baseName $ \a -> withName baseName $ \a' -> ma a a'
+withFreshName2 :: forall s m a. MonadNames s m => Eq s => InfiniteList s -> (s -> s -> m a) -> m a
+withFreshName2 baseName ma = withFreshName baseName $ \a -> withFreshName baseName $ \a' -> ma a a'
 
 runNamesTWith :: forall s m a. Monad m => List s -> NamesT s m a -> m a
 runNamesTWith bindings (NamesT ma) = ma bindings

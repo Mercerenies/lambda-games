@@ -5,22 +5,20 @@ module Lambda.Type.Free(
                         describeFreeTheorem, describeFreeTheoremWith
                        ) where
 
-import Lambda.Type (TType(..), suggestedVariableName)
+import Lambda.Type (TType(..), suggestedVariableName, functionNames)
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
+import Lambda.Type.BuiltinsMap (BuiltinsMap)
+import Lambda.Type.BuiltinsMap (lookup) as BuiltinsMap
 import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate)
-import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesTWith, class MonadNames)
-import Lambda.Util.InfiniteList (InfiniteList, intersperse)
+import Lambda.Monad.Names (NamesT, withFreshName, withFreshName2, freshStrings, runNamesTWith, class MonadNames)
 import Lambda.PrettyShow (prettyShow)
-import Lambda.LookupMap (LookupMap)
-import Lambda.LookupMap (lookup) as LookupMap
 
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..))
 import Data.List (List(..), (:))
-import Data.NonEmpty ((:|))
 import Data.Foldable (lookup) as Fold
 import Data.Either (Either)
 import Data.Newtype (class Newtype)
@@ -32,7 +30,7 @@ import Prelude
 -- The type that Lambda functions (at the type level) must run in (for
 -- underlying monad m).
 newtype LambdaContextT m a =
-    LambdaContextT (ReaderT (LookupMap String (Lambda (LambdaContextT m) Relation)) (NamesT String m) a)
+    LambdaContextT (ReaderT (BuiltinsMap (LambdaContextT m)) (NamesT String m) a)
 
 derive instance Newtype (LambdaContextT m a) _
 derive newtype instance Functor m => Functor (LambdaContextT m)
@@ -42,19 +40,16 @@ derive newtype instance Bind m => Bind (LambdaContextT m)
 derive newtype instance Monad m => Monad (LambdaContextT m)
 derive newtype instance MonadThrow e m => MonadThrow e (LambdaContextT m)
 derive newtype instance MonadError e m => MonadError e (LambdaContextT m)
-derive newtype instance Monad m => MonadAsk (LookupMap String (Lambda (LambdaContextT m) Relation)) (LambdaContextT m)
-derive newtype instance Monad m => MonadReader (LookupMap String (Lambda (LambdaContextT m) Relation)) (LambdaContextT m)
+derive newtype instance Monad m => MonadAsk (BuiltinsMap (LambdaContextT m)) (LambdaContextT m)
+derive newtype instance Monad m => MonadReader (BuiltinsMap (LambdaContextT m)) (LambdaContextT m)
 derive newtype instance Monad m => MonadNames String (LambdaContextT m)
 
-unLambdaContextT :: forall m a. LambdaContextT m a -> ReaderT (LookupMap String (Lambda (LambdaContextT m) Relation)) (NamesT String m) a
+unLambdaContextT :: forall m a. LambdaContextT m a -> ReaderT (BuiltinsMap (LambdaContextT m)) (NamesT String m) a
 unLambdaContextT (LambdaContextT x) = x
 
 runLambdaContextT :: forall m a. Monad m =>
-                     LambdaContextT m a -> LookupMap String (Lambda (LambdaContextT m) Relation) -> List String -> m a
+                     LambdaContextT m a -> BuiltinsMap (LambdaContextT m) -> List String -> m a
 runLambdaContextT (LambdaContextT x) r reservedNames = runNamesTWith reservedNames (runReaderT x r)
-
-functionNames :: InfiniteList String
-functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
 
 -- Lift a closed type into a relation.
 relationify :: forall m. MonadError TypeError m => TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
@@ -69,7 +64,7 @@ relationifyWithBindings bindings (TVar x)
     | Just rel <- Fold.lookup x bindings = pure (Ground rel)
     | otherwise = throwError $ UnboundVariable x
 relationifyWithBindings _ (TGround x) = do
-    lam <- asks $ LookupMap.lookup x
+    lam <- asks $ BuiltinsMap.lookup x
     case lam of
       Nothing -> throwError $ UnboundGroundTerm x
       Just expr -> pure expr
@@ -82,7 +77,7 @@ relationifyWithBindings bindings (TApp ff aa) = do
       assertKind domain (getKind a)
       f' a
 relationifyWithBindings bindings (TArrow a b) = do
-  withName2 (suggestedVariableName a) $ \a1 a2 -> do
+  withFreshName2 (suggestedVariableName freshStrings a) $ \a1 a2 -> do
     ra <- relationifyWithBindings bindings a >>= expectGround
     rb <- relationifyWithBindings bindings b >>= expectGround
     pure $ Ground $ rForall a1 a $ rForall a2 a $
@@ -91,7 +86,7 @@ relationifyWithBindings bindings (TArrow a b) = do
 --relationifyWithBindings _ (TContextArrow _ _) =
 --    unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) = do
-  withName2 x \x1 x2 -> do
+  withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
       let rel = mapTerms (App (Var f)) identity identityRelation
       innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body >>= expectGround
@@ -99,15 +94,15 @@ relationifyWithBindings bindings (TForall x body) = do
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
 describeFreeTheoremWith :: (Predicate -> Predicate) ->
-                           LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->
+                           BuiltinsMap (LambdaContextT (Either TypeError)) ->
                            List String -> TType -> Either TypeError String
 describeFreeTheoremWith simplifier builtins reservedNames t = runLambdaContextT fullDescription builtins reservedNames
   where fullDescription :: LambdaContextT (Either TypeError) String
-        fullDescription = withName (suggestedVariableName t) $ \a -> do
+        fullDescription = withFreshName (suggestedVariableName freshStrings t) $ \a -> do
          r <- relationify t >>= expectGround
          let description = prettyShow $ simplifier (runRelation r (Var a) (Var a))
          pure $ a <> " ~ " <> a <> " if " <> description
 
-describeFreeTheorem :: LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->
+describeFreeTheorem :: BuiltinsMap (LambdaContextT (Either TypeError)) ->
                        List String -> TType -> Either TypeError String
 describeFreeTheorem = describeFreeTheoremWith identity

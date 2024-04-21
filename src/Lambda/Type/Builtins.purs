@@ -8,6 +8,7 @@ module Lambda.Type.Builtins(
 import Lambda.Type.Relation (Relation, identityRelation)
 import Lambda.Type.Functions (Lambda(..), lambda1)
 import Lambda.Type.Error (class FromKindError)
+import Lambda.Type.BuiltinsMap (BuiltinsMap(..))
 import Lambda.Term (Term(..), allVariables)
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
 import Lambda.Util.InfiniteList (find) as InfiniteList
@@ -22,6 +23,7 @@ import Data.Map (fromFoldable) as Map
 import Data.NonEmpty ((:|))
 import Data.Tuple (Tuple(..))
 import Data.Bifunctor (bimap)
+import Data.String.Common (toLower)
 import Control.Monad.Error.Class (class MonadError)
 import Prelude
 
@@ -63,5 +65,5 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "List" listType
                    ]
 
-allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => LookupMap String (Lambda m Relation)
-allBuiltins = LookupMap.fromMap namedBuiltinsMap
+allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
+allBuiltins = BuiltinsMap { lookupMap: LookupMap.fromMap namedBuiltinsMap }

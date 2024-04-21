@@ -2,18 +2,19 @@
 module Lambda.Type(
                    TType(..),
                    substitute, freeVariables, isClosed, makeClosed,
-                   suggestedVariableName
+                   functionNames, suggestedVariableName
                   ) where
 
 import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
+import Lambda.Util.InfiniteList (InfiniteList, intersperse)
+import Lambda.Monad.Names (freshStrings)
 
 import Prelude
 import Data.List (List(..), (:), singleton, null, filter, nub)
 import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
-import Data.String.Common (toLower)
-import Data.NonEmpty((:|))
+import Data.NonEmpty ((:|))
 import Control.Lazy (defer)
 import Control.Apply (lift2)
 import Control.Monad.Gen (sized, resize, oneOf, choose)
@@ -108,22 +109,20 @@ prettyShowPrec n (TForall v x) =
     let x' = prettyShowPrec forallPrecedence x in
     parenthesizeIf (n >= arrowLeftPrecedence) $ "∀ " <> v <> ". " <> x'
 
--- A helpful variable name for a variable of the given type. This is
--- purely a heuristic meant to produce more user-friendly output.
-suggestedVariableName :: TType -> String
-suggestedVariableName (TVar s) = s
-suggestedVariableName (TGround s) = suggestedGroundVariableName s
-suggestedVariableName (TApp left _) = suggestedVariableName left
-suggestedVariableName (TArrow _ _) = "f" -- short for "function"
---suggestedVariableName (TContextArrow _ rhs) = suggestedVariableName rhs
-suggestedVariableName (TForall _ t) = suggestedVariableName t
+functionNames :: InfiniteList String
+functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
 
-suggestedGroundVariableName :: String -> String
-suggestedGroundVariableName "Int" = "n"
-suggestedGroundVariableName "Bool" = "b"
-suggestedGroundVariableName "Float" = "f"
-suggestedGroundVariableName "String" = "s"
-suggestedGroundVariableName s = toLower s
+-- A helpful variable name stream for a variable of the given type.
+-- This is purely a heuristic meant to produce more user-friendly
+-- output.
+suggestedVariableName :: (String -> InfiniteList String) -> TType -> InfiniteList String
+suggestedVariableName groundNames = go
+    where go (TVar s) = freshStrings s
+          go (TGround s) = groundNames s
+          go (TApp left _) = go left
+          go (TArrow _ _) = functionNames
+          --go (TContextArrow _ rhs) = suggestedVariableName rhs
+          go (TForall _ t) = go t
 
 genTType :: Gen TType
 genTType = genTType'
