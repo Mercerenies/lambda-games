@@ -14,6 +14,8 @@ import Lambda.PrettyShow (prettyShow)
 
 import Prelude
 import Data.Bifunctor (class Bifunctor, bimap)
+import Control.Biapply (class Biapply, biapply)
+import Control.Biapplicative (class Biapplicative)
 
 -- A Predicate with holes of types a1 and a2 in place of the terms.
 data PredicateZipper a b = PEquals a b |
@@ -29,6 +31,16 @@ instance Bifunctor PredicateZipper where
     bimap f g (PEquals a b) = PEquals (f a) (g b)
     bimap f g (PImplies lhs rhs) = PImplies lhs (bimap f g rhs)
     bimap f g (PForall name ttype rhs) = PForall name ttype (bimap f g rhs)
+
+instance Biapply PredicateZipper where
+    biapply (PEquals f g) (PEquals a b) = PEquals (f a) (g b)
+    biapply (PImplies lhs rhs) y = PImplies lhs (biapply rhs y)
+    biapply (PForall name ttype rhs) y = PForall name ttype (biapply rhs y)
+    biapply x (PImplies lhs rhs) = PImplies lhs (biapply x rhs)
+    biapply x (PForall name ttype rhs) = PForall name ttype (biapply x rhs)
+
+instance Biapplicative PredicateZipper where
+    bipure = PEquals
 
 runPredicateZipper :: forall a b. PredicateZipper a b -> (a -> Term) -> (b -> Term) -> Predicate
 runPredicateZipper p f g = go p
