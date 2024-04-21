@@ -1,8 +1,7 @@
 
 module Lambda.Type.Functions(
                              Lambda(..), LambdaFunction,
-                             getKind, assertKind, expectFunction, expectGround,
-                             lambda1
+                             getKind, assertKind, expectFunction, expectGround
                             ) where
 
 import Lambda.Type.Kind (TKind(..))
@@ -41,12 +40,3 @@ expectGround f = throwError $ kindError {
                     expected: Ty,
                     actual: getKind f
                   }
-
--- Helper for producing lambdas of kind (Type -> Type)
-lambda1 :: forall e m r. FromKindError e => MonadError e m => (r -> m r) -> Lambda m r
-lambda1 f = Function { domain: Ty, codomain: Ty, body }
-    where body :: LambdaFunction m r
-          body a = do
-            a' <- expectGround a
-            gr <- f a'
-            pure $ Ground gr

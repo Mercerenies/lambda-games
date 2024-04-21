@@ -6,7 +6,8 @@ module Lambda.Type.Builtins(
                            ) where
 
 import Lambda.Type.Relation (Relation, identityRelation)
-import Lambda.Type.Functions (Lambda(..), lambda1)
+import Lambda.Type.Functions (Lambda(..))
+import Lambda.Type.Functions.Factory (lambda1)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
 import Lambda.Term (Term(..), allVariables)
