@@ -67,7 +67,7 @@ listBuiltin = Builtin {
               }
 
 --tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
---tuple2Type = lambda2 \ra rb -> ?a
+--tuple2Type = lambda2 \ra rb -> 
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [

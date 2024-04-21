@@ -99,7 +99,6 @@ prettyShowPrec n (OperatorApp a o b) =
     let a' = prettyShowPrec (operatorPrecedenceLeft o) a
         b' = prettyShowPrec (operatorPrecedenceRight o) b in
     parenthesizeIf (n >= operatorPrecedenceMax o) $ a' <> " " <> o <> " " <> b'
-
 prettyShowPrec n (Fn var body) =
     let body' = prettyShowPrec defaultPrecedence body in
     parenthesizeIf (n > defaultPrecedence) $ "λ" <> var <> ". " <> body'
