@@ -1,14 +1,16 @@
 
 module Lambda.Predicate(
-                        Predicate(..), equals, substitute
+                        Predicate(..), equals, substitute, allVariables
                        ) where
 
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
 import Lambda.Term (Term)
-import Lambda.Term (substitute) as Term
+import Lambda.Term (substitute, allVariables) as Term
 import Lambda.Type (TType(..))
 
 import Prelude
+import Data.Set (Set)
+import Data.Set (insert) as Set
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 
@@ -39,6 +41,21 @@ substitute x t = go
           go (Forall x' ttype body)
               | x == x' = Forall x' ttype body
               | otherwise = Forall x' ttype $ go body
+
+-- All variables at BOTH the term and predicate level.
+allVariables :: Predicate -> Set String
+allVariables (Operator _ a b) = Term.allVariables a <> Term.allVariables b
+allVariables (Implies lhs rhs) = allVariables lhs <> allVariables rhs
+allVariables (And lhs rhs) = allVariables lhs <> allVariables rhs
+allVariables (Or lhs rhs) = allVariables lhs <> allVariables rhs
+allVariables (Forall x _ body) = Set.insert x (allVariables body)
+
+allQuantifiedVariables :: Predicate -> Set String
+allQuantifiedVariables (Operator _ _ _) = mempty
+allQuantifiedVariables (Implies lhs rhs) = allQuantifiedVariables lhs <> allQuantifiedVariables rhs
+allQuantifiedVariables (And lhs rhs) = allQuantifiedVariables lhs <> allQuantifiedVariables rhs
+allQuantifiedVariables (Or lhs rhs) = allQuantifiedVariables lhs <> allQuantifiedVariables rhs
+allQuantifiedVariables (Forall x _ body) = Set.insert x (allQuantifiedVariables body)
 
 defaultPrecedence :: Int
 defaultPrecedence = 0
