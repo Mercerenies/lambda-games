@@ -53,7 +53,7 @@ basicBuiltin nameStream = Builtin {
                           }
 
 listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
-listType = lambda1 \r -> pure $ bimap liftToFmap liftToFmap r
+listType = lambda1 \r -> bimap liftToFmap liftToFmap r
     where liftToFmap :: (Term -> Term) -> Term -> Term
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
