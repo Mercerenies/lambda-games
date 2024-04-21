@@ -13,6 +13,7 @@ import Lambda.Util.InfiniteList (InfiniteList)
 
 import Prelude
 import Data.Maybe (Maybe)
+import Data.Newtype (class Newtype)
 import Control.Alternative (alt, empty)
 
 newtype BuiltinsMap :: (Type -> Type) -> Type
@@ -20,8 +21,11 @@ newtype BuiltinsMap m = BuiltinsMap (LookupMap String (Builtin m))
 
 newtype Builtin :: (Type -> Type) -> Type
 newtype Builtin m = Builtin {
-      relation :: Lambda m Relation
+      relation :: Lambda m Relation,
+      nameStream :: InfiniteList String
     }
+
+derive instance Newtype (BuiltinsMap m) _
 
 instance Semigroup (BuiltinsMap m) where
     append (BuiltinsMap lookupMap1) (BuiltinsMap lookupMap2) =

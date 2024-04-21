@@ -1,7 +1,7 @@
 
 module Lambda.Type.Builtins(
                             reservedNames,
-                            basicType, listType,
+                            basicBuiltin, listBuiltin,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
@@ -46,22 +46,34 @@ liftToLambda f = Fn newVar (f (Var newVar))
     where allVars = allVariables (f (Var "_")) -- Just fill in a placeholder variable
           newVar = InfiniteList.find (\var -> not (var `Set.member` allVars)) temporaryVarNames
 
-basicType :: forall m. Lambda m Relation
-basicType = Ground identityRelation
+basicBuiltin :: forall m. InfiniteList String -> Builtin m
+basicBuiltin nameStream = Builtin {
+                            relation: Ground identityRelation,
+                            nameStream
+                          }
 
 listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
 listType = lambda1 \r -> pure $ bimap liftToFmap liftToFmap r
     where liftToFmap :: (Term -> Term) -> Term -> Term
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
+listNames :: InfiniteList String
+listNames = intersperse (freshStrings "xs" :| freshStrings "ys" : freshStrings "zs" : freshStrings "ws" : Nil)
+
+listBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+listBuiltin = Builtin {
+                relation: listType,
+                nameStream: listNames
+              }
+
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
-                    Tuple "Int" $ Builtin { relation: basicType },
-                    Tuple "Float" $ Builtin { relation: basicType },
-                    Tuple "Double" $ Builtin { relation: basicType },
-                    Tuple "String" $ Builtin { relation: basicType },
-                    Tuple "Boolean" $ Builtin { relation: basicType },
-                    Tuple "List" $ Builtin { relation: listType }
+                    Tuple "Int" $ basicBuiltin (freshStrings "n"),
+                    Tuple "Float" $ basicBuiltin (freshStrings "f"),
+                    Tuple "Double" $ basicBuiltin (freshStrings "d"),
+                    Tuple "String" $ basicBuiltin (freshStrings "s"),
+                    Tuple "Boolean" $ basicBuiltin (freshStrings "b"),
+                    Tuple "List" $ listBuiltin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
