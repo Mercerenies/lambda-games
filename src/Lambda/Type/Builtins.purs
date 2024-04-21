@@ -10,9 +10,9 @@ import Lambda.Type.Functions (Lambda(..), lambda1)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
 import Lambda.Term (Term(..), allVariables)
-import Lambda.Util.InfiniteList (InfiniteList, intersperse)
+import Lambda.Util.InfiniteList (InfiniteList)
 import Lambda.Util.InfiniteList (find) as InfiniteList
-import Lambda.Monad.Names (class MonadNames, freshStrings)
+import Lambda.Monad.Names (class MonadNames, freshStrings, interspersedStrings)
 import Lambda.LookupMap (fromMap) as LookupMap
 
 import Data.List (List(..), (:))
@@ -33,7 +33,7 @@ reservedNames = ["fmap"]
 
 -- Names for use in generated lambda expressions.
 temporaryVarNames :: InfiniteList String
-temporaryVarNames = intersperse (freshStrings "x" :| freshStrings "y" : freshStrings "z" : freshStrings "w" : Nil)
+temporaryVarNames = interspersedStrings ("x" :| "y" : "z" : "w" : Nil)
 
 -- Lift a function on terms to a lambda at the language level that
 -- fills in the same holes as the original Purescript function.
@@ -58,7 +58,7 @@ listType = lambda1 \r -> pure $ bimap liftToFmap liftToFmap r
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
 listNames :: InfiniteList String
-listNames = intersperse (freshStrings "xs" :| freshStrings "ys" : freshStrings "zs" : freshStrings "ws" : Nil)
+listNames = interspersedStrings ("xs" :| "ys" : "zs" : "ws" : Nil)
 
 listBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
 listBuiltin = Builtin {

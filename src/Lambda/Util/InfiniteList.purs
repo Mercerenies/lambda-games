@@ -14,6 +14,7 @@ import Data.Lazy (defer) as Lazy
 import Data.List (List(..), (:))
 import Data.NonEmpty(NonEmpty)
 import Data.Tuple (Tuple(..))
+import Data.Semigroup.Foldable (class Foldable1)
 import Data.FunctorWithIndex (class FunctorWithIndex)
 import Control.Lazy (class Lazy, fix, defer)
 import Control.Comonad (class Extend, class Comonad, extend)
@@ -49,7 +50,7 @@ head (InfiniteList xs) = let Tuple x _ = force xs in x
 tail :: forall a. InfiniteList a -> InfiniteList a
 tail (InfiniteList xs) = let Tuple _ xs' = force xs in xs'
 
-intersperse :: forall a. NonEmpty List (InfiniteList a) -> InfiniteList a
+intersperse :: forall f a. Foldable1 f => f (InfiniteList a) -> InfiniteList a
 intersperse = toList >>> go
     where go xss = prepend (map head xss) $ defer \_ -> go (map tail xss)
 

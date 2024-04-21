@@ -6,8 +6,8 @@ module Lambda.Type(
                   ) where
 
 import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
-import Lambda.Util.InfiniteList (InfiniteList, intersperse)
-import Lambda.Monad.Names (freshStrings)
+import Lambda.Util.InfiniteList (InfiniteList)
+import Lambda.Monad.Names (interspersedStrings, freshStrings)
 
 import Prelude
 import Data.List (List(..), (:), singleton, null, filter, nub)
@@ -110,7 +110,7 @@ prettyShowPrec n (TForall v x) =
     parenthesizeIf (n >= arrowLeftPrecedence) $ "∀ " <> v <> ". " <> x'
 
 functionNames :: InfiniteList String
-functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
+functionNames = interspersedStrings ("f" :| "g" : "h" : Nil)
 
 -- A helpful variable name stream for a variable of the given type.
 -- This is purely a heuristic meant to produce more user-friendly

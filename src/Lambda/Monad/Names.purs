@@ -2,17 +2,19 @@
 module Lambda.Monad.Names(
                           NamesT(), Names,
                           class MonadNames, withNameBound, askBindings,
-                          freshStrings, withFreshName, withFreshName2,
+                          freshStrings, interspersedStrings,
+                          withFreshName, withFreshName2,
                           runNamesTWith, runNamesT,
                           runNamesWith, runNames
                          ) where
 
-import Lambda.Util.InfiniteList(InfiniteList, unfoldrForever, cons, find)
+import Lambda.Util.InfiniteList(InfiniteList, intersperse, unfoldrForever, cons, find)
 
 import Prelude
 import Data.Tuple (Tuple(..))
 import Data.List (List(..), (:), notElem)
 import Data.Identity (Identity(..))
+import Data.Semigroup.Foldable (class Foldable1)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError, catchError)
 import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, ask, local)
@@ -90,6 +92,9 @@ instance MonadNames s m => MonadNames s (ReaderT r m) where
 
 freshStrings :: String -> InfiniteList String
 freshStrings s = cons s $ cons (s <> "'") $ unfoldrForever (\n -> Tuple (s <> show n) (n + 1)) 0
+
+interspersedStrings :: forall f. Functor f => Foldable1 f => f String -> InfiniteList String
+interspersedStrings = intersperse <<< map freshStrings
 
 withFreshName :: forall s m a. MonadNames s m => Eq s => InfiniteList s -> (s -> m a) -> m a
 withFreshName freshNameStream ma = do
