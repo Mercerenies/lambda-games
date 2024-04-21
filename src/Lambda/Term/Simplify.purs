@@ -6,7 +6,6 @@ module Lambda.Term.Simplify(
                            ) where
 
 import Lambda.Term (Term(..), freeVariables)
-import Lambda.PrettyShow (prettyShow)
 
 import Prelude
 import Safe.Coerce (coerce)
@@ -18,8 +17,6 @@ postOrderTraverseM f = go
     where go x = recurse x >>= f
           recurse (Var s) = pure (Var s)
           recurse (App t1 t2) = App <$> go t1 <*> go t2
-          recurse (TypeApp t1 t2) = TypeApp <$> go t1 <*> go t2
-          recurse (Subscript t1 t2) = Subscript <$> go t1 <*> go t2
           recurse (OperatorSectionLeft s t) = OperatorSectionLeft s <$> go t
           recurse (OperatorSectionRight t s) = OperatorSectionRight <$> go t <*> pure s
           recurse (Fn x body) = Fn x <$> go body

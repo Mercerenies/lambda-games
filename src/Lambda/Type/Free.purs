@@ -96,8 +96,7 @@ relationifyWithBindings bindings (TForall x body) = do
       let rel = mapTerms (App (Var f)) identity identityRelation
       innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body >>= expectGround
       pure $ Ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
-                        rForall f (TVar x1 `TArrow` TVar x2) $
-                          mapTerms (\left -> TypeApp left (Var x1)) (\right -> TypeApp right (Var x2)) innerRelation
+                        rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
 describeFreeTheoremWith :: (Predicate -> Predicate) ->
                            LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->
