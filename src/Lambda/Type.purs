@@ -106,7 +106,7 @@ prettyShowPrec n (TArrow left right) =
 --    parenthesizeIf (n >= arrowLeftPrecedence) $ left' <> " => " <> right'
 prettyShowPrec n (TForall v x) =
     let x' = prettyShowPrec forallPrecedence x in
-    parenthesizeIf (n >= arrowLeftPrecedence) $ "∀" <> v <> ". " <> x'
+    parenthesizeIf (n >= arrowLeftPrecedence) $ "∀ " <> v <> ". " <> x'
 
 -- A helpful variable name for a variable of the given type. This is
 -- purely a heuristic meant to produce more user-friendly output.
