@@ -1,13 +1,14 @@
 
 module Lambda.Predicate.Simplify(
                                  postOrderTraverseM, postOrderTraverse,
-                                 simplify, simplifyConstrainedEquality
+                                 simplify, simplifyConstrainedEquality, simplifyTerms
                                 ) where
 
 -- Miscellaneous simplifications that can be applied to predicates.
 
 import Lambda.Predicate (Predicate(..), substitute)
 import Lambda.Term (Term(..))
+import Lambda.Term.Simplify (simplify, postOrderTraverse) as TermSimplify
 
 import Control.Apply (lift2)
 import Safe.Coerce (coerce)
@@ -27,10 +28,15 @@ postOrderTraverse :: (Predicate -> Predicate) -> Predicate -> Predicate
 postOrderTraverse f = coerce <<< postOrderTraverseM (Identity <<< f)
 
 simplify :: Predicate -> Predicate
-simplify = simplifyConstrainedEquality
+simplify = simplifyConstrainedEquality >>> simplifyTerms TermSimplify.simplify
 
 simplifyConstrainedEquality :: Predicate -> Predicate
 simplifyConstrainedEquality = postOrderTraverse go
     where go (Forall v _ (Implies (Operator "=" (Var v') value) result)) | v == v' = substitute v value result
           go (Forall v _ (Implies (Operator "=" value (Var v')) result)) | v == v' = substitute v value result
           go pred = pred
+
+simplifyTerms :: (Term -> Term) -> Predicate -> Predicate
+simplifyTerms simplifier = postOrderTraverse go
+    where go (Operator op a b) = Operator op (TermSimplify.postOrderTraverse simplifier a) (TermSimplify.postOrderTraverse simplifier b)
+          go x = x

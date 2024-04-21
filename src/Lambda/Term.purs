@@ -4,7 +4,7 @@ module Lambda.Term(
                    substitute
                   ) where
 
-import Lambda.PrettyShow(class PrettyShow, parenthesizeIf)
+import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
