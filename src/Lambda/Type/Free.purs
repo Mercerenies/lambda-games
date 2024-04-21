@@ -6,11 +6,11 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName)
-import Lambda.Type.Relation (Relation(..))
+import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
 import Lambda.Term (Term(..))
-import Lambda.Predicate (Predicate(..), equals)
+import Lambda.Predicate (Predicate)
 import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesT, class MonadNames)
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
 import Lambda.PrettyShow (prettyShow)
@@ -83,20 +83,21 @@ relationifyWithBindings bindings (TApp ff aa) = do
       f' a
 relationifyWithBindings bindings (TArrow a b) = do
   withName2 (suggestedVariableName a) $ \a1 a2 -> do
-    Relation ra <- relationifyWithBindings bindings a >>= expectGround
-    Relation rb <- relationifyWithBindings bindings b >>= expectGround
-    pure $ Ground $ Relation \left right -> Forall a1 a $ Forall a2 a $
-                                            ra (Var a1) (Var a2) `Implies` rb (App (appSection (Var a1)) left) (App (appSection (Var a2)) right)
+    ra <- relationifyWithBindings bindings a >>= expectGround
+    rb <- relationifyWithBindings bindings b >>= expectGround
+    pure $ Ground $ rForall a1 a $ rForall a2 a $
+                      runRelation ra (Var a1) (Var a2) `rImplies`
+                        mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
 --relationifyWithBindings _ (TContextArrow _ _) =
 --    unsafeThrow "Not supported yet"
 relationifyWithBindings bindings (TForall x body) = do
   withName2 x \x1 x2 -> do
     withFreshName functionNames \f -> do
-      let rel = Relation \left right -> App (Var f) left `equals` right
-      Relation innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body >>= expectGround
-      pure $ Ground $ Relation \left right -> Forall x1 (TVar "Type") $ Forall x2 (TVar "Type") $
-                                                Forall f (TVar x1 `TArrow` TVar x2) $
-                                                  innerRelation (TypeApp left (Var x1)) (TypeApp right (Var x2))
+      let rel = mapTerms (App (Var f)) identity identityRelation
+      innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body >>= expectGround
+      pure $ Ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
+                        rForall f (TVar x1 `TArrow` TVar x2) $
+                          mapTerms (\left -> TypeApp left (Var x1)) (\right -> TypeApp right (Var x2)) innerRelation
 
 describeFreeTheoremWith :: (Predicate -> Predicate) ->
                            LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->
@@ -104,8 +105,8 @@ describeFreeTheoremWith :: (Predicate -> Predicate) ->
 describeFreeTheoremWith simplifier builtins t = runLambdaContextT fullDescription builtins
   where fullDescription :: LambdaContextT (Either TypeError) String
         fullDescription = withName (suggestedVariableName t) $ \a -> do
-         Relation r <- relationify t >>= expectGround
-         let description = prettyShow $ simplifier (r (Var a) (Var a))
+         r <- relationify t >>= expectGround
+         let description = prettyShow $ simplifier (runRelation r (Var a) (Var a))
          pure $ a <> " ~ " <> a <> " if " <> description
 
 describeFreeTheorem :: LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->

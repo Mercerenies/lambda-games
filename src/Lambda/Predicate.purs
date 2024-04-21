@@ -6,7 +6,7 @@ module Lambda.Predicate(
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
 import Lambda.Term (Term)
 import Lambda.Term (substitute) as Term
-import Lambda.Type (TType)
+import Lambda.Type (TType(..))
 
 import Prelude
 import Data.Generic.Rep (class Generic)
@@ -77,5 +77,15 @@ prettyShowForall :: String -> TType -> Predicate -> String
 prettyShowForall var varType (Forall var' varType' body') | varType == varType' =
     var <> " " <> prettyShowForall var' varType' body'
 prettyShowForall var varType body =
-    let body' = prettyShowPrec defaultPrecedence body in
-    var <> ": " <> prettyShow varType <> ". " <> body'
+    let body' = prettyShowPrec defaultPrecedence body
+        varType' = prettyShowQuantifiedType varType in
+    var <> ": " <> varType' <> ". " <> body'
+
+-- Parenthesize the type if it's "complicated", so that the resulting
+-- output looks nicer. This is mostly a heuristic thing and is just
+-- designed to pretty up the output.
+prettyShowQuantifiedType :: TType -> String
+prettyShowQuantifiedType t = parenthesizeIf (isComplex t) $ prettyShow t
+    where isComplex (TForall _ _) = true
+          isComplex (TArrow _ rhs) = isComplex rhs
+          isComplex _ = false

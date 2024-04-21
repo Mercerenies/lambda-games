@@ -1,6 +1,6 @@
 
 module Lambda.Type.Builtins(
-                            basicType, listType,
+                            basicType, --listType,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
@@ -29,6 +29,7 @@ indexNames = intersperse (freshStrings "i" :| freshStrings "j" : freshStrings "k
 basicType :: forall m. Lambda m Relation
 basicType = Ground identityRelation
 
+{-
 listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
 listType = lambda1 \r -> ado
     innerRelation <- withFreshName indexNames \i -> pure (elementwiseConstraint r i)
@@ -39,15 +40,15 @@ listType = lambda1 \r -> ado
             Relation \xs ys -> Forall i (TVar "Nat") $
                                  Operator "<" (Var i) (App (Var "length") xs) `Implies`
                                    runRelation r (Subscript xs (Var i)) (Subscript ys (Var i))
-
+-}
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Lambda m Relation)
 namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Int" basicType,
                     Tuple "Float" basicType,
                     Tuple "Double" basicType,
                     Tuple "String" basicType,
-                    Tuple "Boolean" basicType,
-                    Tuple "List" listType
+                    Tuple "Boolean" basicType--,
+--                    Tuple "List" listType
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => LookupMap String (Lambda m Relation)
