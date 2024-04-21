@@ -11,7 +11,7 @@ import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
 import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate)
-import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesT, class MonadNames)
+import Lambda.Monad.Names (NamesT, withName, withFreshName, freshStrings, withName2, runNamesTWith, class MonadNames)
 import Lambda.Util.InfiniteList (InfiniteList, intersperse)
 import Lambda.PrettyShow (prettyShow)
 import Lambda.LookupMap (LookupMap)
@@ -50,8 +50,8 @@ unLambdaContextT :: forall m a. LambdaContextT m a -> ReaderT (LookupMap String 
 unLambdaContextT (LambdaContextT x) = x
 
 runLambdaContextT :: forall m a. Monad m =>
-                     LambdaContextT m a -> LookupMap String (Lambda (LambdaContextT m) Relation) -> m a
-runLambdaContextT (LambdaContextT x) r = runNamesT (runReaderT x r)
+                     LambdaContextT m a -> LookupMap String (Lambda (LambdaContextT m) Relation) -> List String -> m a
+runLambdaContextT (LambdaContextT x) r reservedNames = runNamesTWith reservedNames (runReaderT x r)
 
 functionNames :: InfiniteList String
 functionNames = intersperse (freshStrings "f" :| freshStrings "g" : freshStrings "h" : Nil)
@@ -101,8 +101,8 @@ relationifyWithBindings bindings (TForall x body) = do
 
 describeFreeTheoremWith :: (Predicate -> Predicate) ->
                            LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->
-                           TType -> Either TypeError String
-describeFreeTheoremWith simplifier builtins t = runLambdaContextT fullDescription builtins
+                           List String -> TType -> Either TypeError String
+describeFreeTheoremWith simplifier builtins reservedNames t = runLambdaContextT fullDescription builtins reservedNames
   where fullDescription :: LambdaContextT (Either TypeError) String
         fullDescription = withName (suggestedVariableName t) $ \a -> do
          r <- relationify t >>= expectGround
@@ -110,5 +110,5 @@ describeFreeTheoremWith simplifier builtins t = runLambdaContextT fullDescriptio
          pure $ a <> " ~ " <> a <> " if " <> description
 
 describeFreeTheorem :: LookupMap String (Lambda (LambdaContextT (Either TypeError)) Relation) ->
-                       TType -> Either TypeError String
+                       List String -> TType -> Either TypeError String
 describeFreeTheorem = describeFreeTheoremWith identity

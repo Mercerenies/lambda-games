@@ -1,5 +1,6 @@
 
 module Lambda.Type.Builtins(
+                            reservedNames,
                             basicType, listType,
                             namedBuiltinsMap, allBuiltins
                            ) where
@@ -23,6 +24,11 @@ import Data.Tuple (Tuple(..))
 import Data.Bifunctor (bimap)
 import Control.Monad.Error.Class (class MonadError)
 import Prelude
+
+-- Names that we might introduce and assume are not being shadowed by
+-- a lambda parameter anywhere.
+reservedNames :: Array String
+reservedNames = ["fmap"]
 
 -- Names for use in generated lambda expressions.
 temporaryVarNames :: InfiniteList String
