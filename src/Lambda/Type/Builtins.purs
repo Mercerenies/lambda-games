@@ -152,6 +152,7 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Boolean" $ basicBuiltin (freshStrings "b"),
                     Tuple "List" listBuiltin,
                     Tuple "Tuple0" $ basicBuiltin (freshStrings "unit"),
+                    Tuple "Void" $ basicBuiltin (freshStrings "void"),
                     Tuple "Tuple2" tuple2Builtin,
                     Tuple "Tuple3" tuple3Builtin,
                     Tuple "Tuple4" tuple4Builtin,
