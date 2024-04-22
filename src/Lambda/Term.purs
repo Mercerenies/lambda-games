@@ -101,4 +101,4 @@ prettyShowPrec n (OperatorApp a o b) =
     parenthesizeIf (n >= operatorPrecedenceMax o) $ a' <> " " <> o <> " " <> b'
 prettyShowPrec n (Fn var body) =
     let body' = prettyShowPrec defaultPrecedence body in
-    parenthesizeIf (n > defaultPrecedence) $ "λ" <> var <> ". " <> body'
+    parenthesizeIf (n > defaultPrecedence) $ "\\" <> var <> " -> " <> body'
