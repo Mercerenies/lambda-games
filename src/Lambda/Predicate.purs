@@ -14,6 +14,7 @@ import Data.Set (insert) as Set
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 
+-- TODO Can we get this and Relation to all just be specializations of PredicateZipper? It seems kind of silly having a separate type for this.
 data Predicate = Operator String Term Term
                | Implies Predicate Predicate
                | And Predicate Predicate

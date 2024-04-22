@@ -5,20 +5,26 @@ module Lambda.Type.Relation(
                             rImplies, rForall,
                             mapTerms,
                             describeRelation,
-                            allVariablesWith, allVariables, allQuantifiedVariables
+                            allVariablesWith, allVariables, allQuantifiedVariables,
+                            substituteVar,
+                            postOrderTraverseM, postOrderTraverse, alphaRenameQuantified
                            ) where
 
 import Lambda.Predicate (Predicate(..), equals)
-import Lambda.Predicate (allVariables, allQuantifiedVariables) as Predicate
+import Lambda.Predicate (allVariables, allQuantifiedVariables, substitute) as Predicate
+import Lambda.Predicate.Simplify (alphaRenameQuantified) as PredicateSimplify
 import Lambda.Term (Term(..))
-import Lambda.Term (allVariables) as Term
-import Lambda.Type (TType)
+import Lambda.Term (allVariables, substitute) as Term
+import Lambda.Type (TType(..))
+import Lambda.Type (substitute) as Type
 import Lambda.PrettyShow (prettyShow)
 
 import Prelude
 import Data.Bifunctor (class Bifunctor, bimap)
 import Control.Biapply (class Biapply, biapply)
 import Control.Biapplicative (class Biapplicative)
+import Safe.Coerce (coerce)
+import Data.Identity (Identity(..))
 import Data.Set (Set)
 import Data.Set (insert, delete) as Set
 
@@ -84,7 +90,7 @@ allVariablesWith fa fb fpred = go
           go (PImplies lhs rhs) = fpred lhs <> go rhs
           go (PForall name _ rhs) = Set.insert name (go rhs)
 
-allVariables :: PredicateZipper (Term -> Term) (Term -> Term) -> Set String
+allVariables :: Relation -> Set String
 allVariables = allVariablesWith termVars termVars Predicate.allVariables
     where -- For term variables, we simply substitute `TVar "_"` in
           -- and check the resulting term. Our parser forbids the use
@@ -94,3 +100,32 @@ allVariables = allVariablesWith termVars termVars Predicate.allVariables
 
 allQuantifiedVariables :: forall a b. PredicateZipper a b -> Set String
 allQuantifiedVariables = allVariablesWith (const mempty) (const mempty) Predicate.allQuantifiedVariables
+
+substituteVar :: String -> String -> Relation -> Relation
+substituteVar x t = go
+    where go (PEquals a b) = PEquals (Term.substitute x (Var t) <<< a) (Term.substitute x (Var t) <<< b)
+          go (PImplies lhs rhs) = PImplies (Predicate.substitute x (Var t) lhs) (go rhs)
+          go (PForall name ttype rhs)
+              | name == x = PForall name ttype rhs
+              | otherwise = PForall name (Type.substitute x (TVar t) ttype) $ go rhs
+
+postOrderTraverseM :: forall a b m. Monad m => (PredicateZipper a b -> m (PredicateZipper a b)) ->
+                      PredicateZipper a b -> m (PredicateZipper a b)
+postOrderTraverseM f = go
+    where go x = recurse x >>= f
+          recurse (PEquals a b) = pure (PEquals a b)
+          recurse (PImplies lhs rhs) = PImplies lhs <$> go rhs
+          recurse (PForall name ttype rhs) = PForall name ttype <$> go rhs
+
+postOrderTraverse :: forall a b. (PredicateZipper a b -> PredicateZipper a b) ->
+                     PredicateZipper a b -> PredicateZipper a b
+postOrderTraverse f = coerce <<< postOrderTraverseM (Identity <<< f)
+
+-- Note: This function does NOT check whether or not it's shadowing
+-- any other names. It's the caller's responsibility to make sure the
+-- rename is sensible.
+alphaRenameQuantified :: String -> String -> Relation -> Relation
+alphaRenameQuantified old new = go
+    where go (PForall v ttype body) | v == old = PForall new ttype $ substituteVar old new body
+          go (PImplies lhs rhs) = PImplies (PredicateSimplify.alphaRenameQuantified old new lhs) rhs
+          go x = x
