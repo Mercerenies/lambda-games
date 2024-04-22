@@ -8,7 +8,7 @@ module Lambda.Type.Relation(
                             allVariablesWith, allVariables, allQuantifiedVariables,
                             substituteVar,
                             postOrderTraverseM, postOrderTraverse, alphaRenameQuantified,
-                            renameConflicts, zipRelationsWith
+                            renameConflicts, zipRelationsWith, zipRelationsWith3
                            ) where
 
 import Lambda.Util (unsafeFromRight, toList)
@@ -27,13 +27,13 @@ import Prelude
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.List (List(..), reverse, (:), zip)
 import Data.Tuple (Tuple(..))
-import Control.Biapply (class Biapply, biapply, bilift2)
+import Control.Biapply (class Biapply, biapply, bilift2, bilift3)
 import Control.Biapplicative (class Biapplicative)
 import Safe.Coerce (coerce)
 import Data.Identity (Identity(..))
 import Data.Set (Set)
 import Data.Set (insert, delete, intersection, member) as Set
-import Data.Foldable (foldl)
+import Data.Foldable (class Foldable, foldl, foldMap)
 import Data.String.Regex (regex, replace)
 import Data.String.Regex.Flags (noFlags)
 
@@ -141,16 +141,16 @@ alphaRenameQuantified old new = go
           go (PImplies lhs rhs) = PImplies (PredicateSimplify.alphaRenameQuantified old new lhs) rhs
           go x = x
 
--- Identifies any quantified variables in the second relation which
--- are also quantified in the first relation, and then renames them to
--- something that does not appear, in any capacity, in either
--- relation.
-renameConflicts :: Relation -> Relation -> Relation
-renameConflicts first second =
-      foldl (\rel (Tuple oldVar newVar) -> alphaRenameQuantified oldVar newVar rel) second newVars
-    where conflicts = toList $ allQuantifiedVariables first `Set.intersection` allQuantifiedVariables second
+-- Identifies any quantified variables in the final relation which are
+-- also quantified in any of the left-hand relations, and then renames
+-- them to something that does not appear, in any capacity, in any of
+-- the relations.
+renameConflicts :: forall f. Foldable f => f Relation -> Relation -> Relation
+renameConflicts conflictingRelations relation =
+      foldl (\r (Tuple oldVar newVar) -> alphaRenameQuantified oldVar newVar r) relation newVars
+    where conflicts = toList $ foldMap allQuantifiedVariables conflictingRelations `Set.intersection` allQuantifiedVariables relation
           newVars = zip conflicts $ chooseNewVariables allVars conflicts
-          allVars = allVariables first <> allVariables second
+          allVars = foldMap allVariables conflictingRelations <> allVariables relation
 
 chooseNewVariables :: Set String -> List String -> List String
 chooseNewVariables usedVars xs = reverse $ chooseNewVariablesAcc usedVars xs Nil
@@ -170,6 +170,14 @@ baseName s =
 
 zipRelationsWith :: (TermHole -> TermHole -> TermHole) -> (TermHole -> TermHole -> TermHole) ->
                     Relation -> Relation -> Relation
-zipRelationsWith leftMap rightMap left right =
-    let right' = renameConflicts left right in
-    bilift2 leftMap rightMap left right'
+zipRelationsWith leftMap rightMap a b =
+    let b' = renameConflicts [a] b in
+    bilift2 leftMap rightMap a b'
+
+zipRelationsWith3 :: (TermHole -> TermHole -> TermHole -> TermHole) ->
+                     (TermHole -> TermHole -> TermHole -> TermHole) ->
+                     Relation -> Relation -> Relation -> Relation
+zipRelationsWith3 leftMap rightMap a b c =
+    let b' = renameConflicts [a] b
+        c' = renameConflicts [a, b'] c in
+    bilift3 leftMap rightMap a b' c'

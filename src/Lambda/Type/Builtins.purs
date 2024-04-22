@@ -1,16 +1,16 @@
 
 module Lambda.Type.Builtins(
                             reservedNames,
-                            basicBuiltin, listBuiltin, tuple2Builtin,
+                            basicBuiltin, listBuiltin, tuple2Builtin, tuple3Builtin,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
-import Lambda.Type.Relation (Relation, identityRelation, zipRelationsWith, TermHole)
+import Lambda.Type.Relation (Relation, identityRelation, zipRelationsWith, zipRelationsWith3, TermHole)
 import Lambda.Type.Functions (Lambda(..))
-import Lambda.Type.Functions.Factory (lambda1, lambda2)
+import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
-import Lambda.Term (Term(..), allVariables)
+import Lambda.Term (Term(..), Pattern(..), allVariables)
 import Lambda.Util.InfiniteList (InfiniteList)
 import Lambda.Util.InfiniteList (find) as InfiniteList
 import Lambda.Monad.Names (class MonadNames, freshStrings, interspersedStrings)
@@ -69,12 +69,38 @@ listBuiltin = Builtin {
 tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
 tuple2Type = lambda2 \ra rb -> zipRelationsWith liftToTuple liftToTuple ra rb
     where liftToTuple :: TermHole -> TermHole -> TermHole
-          liftToTuple lhs rhs = App (OperatorApp (liftToLambda lhs) "***" (liftToLambda rhs))
+          liftToTuple a b = App (OperatorApp (liftToLambda a) "***" (liftToLambda b))
 
 tuple2Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
 tuple2Builtin = Builtin {
                   relation: tuple2Type,
-                  nameStream: freshStrings "tup"
+                  nameStream: freshStrings "pair"
+                }
+
+-- The function written here is:
+--
+-- map3 f g h (a, b, c) = (f a, g b, h c)
+--
+-- But partially applied to f, g, and h and written in the term
+-- language.
+tuple3Map :: Term -> Term -> Term -> Term
+tuple3Map f g h =
+    let allVars = allVariables f <> allVariables g <> allVariables h
+        aVar = InfiniteList.find (\var -> not (var `Set.member` allVars)) (freshStrings "a")
+        bVar = InfiniteList.find (\var -> not (var `Set.member` allVars)) (freshStrings "b")
+        cVar = InfiniteList.find (\var -> not (var `Set.member` allVars)) (freshStrings "c") in
+    PatternFn (TuplePattern (VarPattern aVar : VarPattern bVar : VarPattern cVar : Nil)) $
+    TupleTerm (f `App` Var aVar : g `App` Var bVar : h `App` Var cVar : Nil)
+
+tuple3Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
+tuple3Type = lambda3 \ra rb rc -> zipRelationsWith3 liftToTuple liftToTuple ra rb rc
+    where liftToTuple :: TermHole -> TermHole -> TermHole -> TermHole
+          liftToTuple a b c = App (tuple3Map (liftToLambda a) (liftToLambda b) (liftToLambda c))
+
+tuple3Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+tuple3Builtin = Builtin {
+                  relation: tuple3Type,
+                  nameStream: freshStrings "trip"
                 }
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
@@ -86,7 +112,8 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Boolean" $ basicBuiltin (freshStrings "b"),
                     Tuple "List" listBuiltin,
                     Tuple "Tuple0" $ basicBuiltin (freshStrings "unit"),
-                    Tuple "Tuple2" tuple2Builtin
+                    Tuple "Tuple2" tuple2Builtin,
+                    Tuple "Tuple3" tuple3Builtin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
