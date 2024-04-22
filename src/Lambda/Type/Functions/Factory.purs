@@ -1,6 +1,6 @@
 
 module Lambda.Type.Functions.Factory(
-                                     lambda0, lambda1, lambda2, lambda3,
+                                     lambda0, lambda1, lambda2, lambda3, lambda4, lambda5,
                                      Mono, runMono, mono,
                                      class MonoLambda, monoLambda, monoKind
                                     ) where
@@ -32,6 +32,14 @@ lambda2 f = monoLambda \a b -> mono (f a b)
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type)
 lambda3 :: forall e m r. FromKindError e => MonadError e m => (r -> r -> r -> r) -> Lambda m r
 lambda3 f = monoLambda \a b c -> mono (f a b c)
+
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type)
+lambda4 :: forall e m r. FromKindError e => MonadError e m => (r -> r -> r -> r -> r) -> Lambda m r
+lambda4 f = monoLambda \a b c d -> mono (f a b c d)
+
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> Type)
+lambda5 :: forall e m r. FromKindError e => MonadError e m => (r -> r -> r -> r -> r -> r) -> Lambda m r
+lambda5 f = monoLambda \a b c d e -> mono (f a b c d e)
 
 -- Helper for producing lambdas which take arbitrary numbers of
 -- arguments, all of which are of kind Type. e.g. (Type -> Type),
