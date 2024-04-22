@@ -3,14 +3,18 @@ module Lambda.Monad.Names(
                           NamesT(), Names,
                           class MonadNames, withNameBound, askBindings,
                           freshStrings, interspersedStrings,
+                          alphabetForever,
                           withFreshName, withFreshName2,
                           runNamesTWith, runNamesT,
                           runNamesWith, runNames
                          ) where
 
-import Lambda.Util.InfiniteList(InfiniteList, intersperse, unfoldrForever, cons, find)
+import Lambda.Util.InfiniteList (InfiniteList, intersperse, unfoldrForever, cons, find, prepend, concatMap)
+import Lambda.Util (toList)
 
 import Prelude
+import Data.String.CodeUnits (toCharArray)
+import Data.String.CodeUnits (singleton) as CodeUnits
 import Data.Tuple (Tuple(..))
 import Data.List (List(..), (:), notElem)
 import Data.Identity (Identity(..))
@@ -21,6 +25,7 @@ import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, ask, local
 import Control.Monad.Morph (class MFunctor, class MMonad, hoist)
 import Control.Monad.Except.Trans (ExceptT)
 import Control.Monad.Reader.Trans (ReaderT)
+import Control.Lazy (defer)
 import Safe.Coerce (coerce)
 
 class Monad m <= MonadNames s m | m -> s where
@@ -92,6 +97,14 @@ instance MonadNames s m => MonadNames s (ReaderT r m) where
 
 freshStrings :: String -> InfiniteList String
 freshStrings s = cons s $ cons (s <> "'") $ unfoldrForever (\n -> Tuple (s <> show n) (n + 1)) 0
+
+alphabet :: List String
+alphabet = toList $ map CodeUnits.singleton $ toCharArray "abcdefghijklmnopqrstuvwxyz"
+
+-- ["a", "b", "c", ..., "y", "z", "aa", "ab", "ac", ...]
+alphabetForever :: InfiniteList String
+alphabetForever =
+    prepend (toList alphabet) $ concatMap (\s -> map (s <> _) alphabet) (defer \_ -> alphabetForever)
 
 interspersedStrings :: forall f. Functor f => Foldable1 f => f String -> InfiniteList String
 interspersedStrings = intersperse <<< map freshStrings

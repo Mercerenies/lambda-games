@@ -8,7 +8,8 @@ module Lambda.Type.Relation(
                             allVariablesWith, allVariables, allQuantifiedVariables,
                             substituteVar,
                             postOrderTraverseM, postOrderTraverse, alphaRenameQuantified,
-                            renameConflicts, zipRelationsWith, zipRelationsWith3
+                            renameConflicts,
+                            zipRelationsWith, zipRelationsWith3, zipRelationsWith4, zipRelationsWith5
                            ) where
 
 import Lambda.Util (unsafeFromRight, toList)
@@ -27,8 +28,8 @@ import Prelude
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.List (List(..), reverse, (:), zip)
 import Data.Tuple (Tuple(..))
-import Control.Biapply (class Biapply, biapply, bilift2, bilift3)
-import Control.Biapplicative (class Biapplicative)
+import Control.Biapply (class Biapply, biapply, bilift2, bilift3, (<<*>>))
+import Control.Biapplicative (class Biapplicative, bipure)
 import Safe.Coerce (coerce)
 import Data.Identity (Identity(..))
 import Data.Set (Set)
@@ -181,3 +182,23 @@ zipRelationsWith3 leftMap rightMap a b c =
     let b' = renameConflicts [a] b
         c' = renameConflicts [a, b'] c in
     bilift3 leftMap rightMap a b' c'
+
+zipRelationsWith4 :: (TermHole -> TermHole -> TermHole -> TermHole -> TermHole) ->
+                     (TermHole -> TermHole -> TermHole -> TermHole -> TermHole) ->
+                     Relation -> Relation -> Relation -> Relation -> Relation
+zipRelationsWith4 leftMap rightMap a b c d =
+    let b' = renameConflicts [a] b
+        c' = renameConflicts [a, b'] c
+        d' = renameConflicts [a, b', c'] d in
+    bipure leftMap rightMap <<*>> a <<*>> b' <<*>> c' <<*>> d'
+
+-- Don't judge me, these go up to 5 arguments to support our tuple types.
+zipRelationsWith5 :: (TermHole -> TermHole -> TermHole -> TermHole -> TermHole -> TermHole) ->
+                     (TermHole -> TermHole -> TermHole -> TermHole -> TermHole -> TermHole) ->
+                     Relation -> Relation -> Relation -> Relation -> Relation -> Relation
+zipRelationsWith5 leftMap rightMap a b c d e =
+    let b' = renameConflicts [a] b
+        c' = renameConflicts [a, b'] c
+        d' = renameConflicts [a, b', c'] d
+        e' = renameConflicts [a, b', c', d'] e in
+    bipure leftMap rightMap <<*>> a <<*>> b' <<*>> c' <<*>> d' <<*>> e'

@@ -3,7 +3,7 @@ module Lambda.Util.InfiniteList(
                           InfiniteList(),
                           cons, lazyCons,
                           repeat, unfoldrForever,
-                          find,
+                          find, concat, concatMap,
                           head, tail, intersperse, take, prepend, cycle
                          ) where
 
@@ -65,6 +65,16 @@ prepend (x : xs) ys = cons x (prepend xs ys)
 
 cycle :: forall a. NonEmpty List a -> InfiniteList a
 cycle xs = let xs' = toList xs in fix (prepend xs')
+
+commuteLazy :: forall a. Lazy (InfiniteList a) -> InfiniteList a
+commuteLazy xs = InfiniteList $ join $ map (\(InfiniteList xs') -> xs') xs
+
+concat :: forall a. InfiniteList (List a) -> InfiniteList a
+concat (InfiniteList xss) =
+    commuteLazy $ map (\(Tuple xs xss') -> prepend xs (concat xss')) xss
+
+concatMap :: forall a b. (a -> List b) -> InfiniteList a -> InfiniteList b
+concatMap f = concat <<< map f
 
 instance Functor InfiniteList where
     map f (InfiniteList xs) = InfiniteList (map (\(Tuple y ys) -> Tuple (f y) (map f ys)) xs)
