@@ -5,12 +5,15 @@ module Lambda.Term.Simplify(
                             simplifyIdentityApp, simplifyFmapId, simplifySplitId
                            ) where
 
-import Lambda.Term (Term(..), freeVariables)
+import Lambda.Term (Term(..), freeVariables, Pattern(..))
 
 import Prelude
 import Safe.Coerce (coerce)
 import Data.Identity (Identity(..))
+import Data.Tuple (Tuple(..))
+import Data.Foldable (length, all)
 import Data.Traversable (traverse)
+import Data.List (zip)
 import Data.Set (member) as Set
 
 postOrderTraverseM :: forall m. Monad m => (Term -> m Term) -> Term -> m Term
@@ -66,4 +69,9 @@ simplifySplitId = postOrderTraverse $ case _ of
 
 isIdentityFunction :: Term -> Boolean
 isIdentityFunction (Fn x (Var x')) | x == x' = true
+isIdentityFunction (PatternFn pat body) = matches pat body
+    where matches (VarPattern p) (Var s) = p == s
+          matches (TuplePattern ps) (TupleTerm xs) =
+              (length ps :: Int) == length xs && all (\(Tuple p x) -> matches p x) (zip ps xs)
+          matches _ _ = false
 isIdentityFunction _ = false
