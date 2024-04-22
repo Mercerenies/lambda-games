@@ -10,6 +10,7 @@ import Lambda.Term (Term(..), freeVariables)
 import Prelude
 import Safe.Coerce (coerce)
 import Data.Identity (Identity(..))
+import Data.Traversable (traverse)
 import Data.Set (member) as Set
 
 postOrderTraverseM :: forall m. Monad m => (Term -> m Term) -> Term -> m Term
@@ -22,6 +23,7 @@ postOrderTraverseM f = go
           recurse (OperatorApp a o b) = OperatorApp <$> go a <*> pure o <*> go b
           recurse (Fn x body) = Fn x <$> go body
           recurse (PatternFn p body) = PatternFn p <$> go body
+          recurse (TupleTerm ts) = TupleTerm <$> traverse go ts
 
 postOrderTraverse :: (Term -> Term) -> Term -> Term
 postOrderTraverse f = coerce <<< postOrderTraverseM (Identity <<< f)

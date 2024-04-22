@@ -21,11 +21,12 @@ data Term = Var String
           | OperatorSectionLeft String Term
           | OperatorSectionRight Term String
           | OperatorApp Term String Term
-          | Fn String Term -- Lambda abstraction
+          | Fn String Term -- Lambda abstraction (TODO Consolidate with PatternFn)
           | PatternFn Pattern Term -- Lambda abstraction (with pattern matching)
+          | TupleTerm (List Term) -- Must not contain exactly one term (we do not currently enforce this precondition)
 
 data Pattern = VarPattern String
-             | TuplePattern (List Pattern)
+             | TuplePattern (List Pattern) -- Must not contain exactly one term (we do not currently enforce this precondition)
 
 derive instance Eq Term
 derive instance Generic Term _
@@ -63,6 +64,7 @@ substitute x t (Fn x' body)
 substitute x t (PatternFn p body)
     | x `Set.member` varsInPattern p = PatternFn p body
     | otherwise = PatternFn p (substitute x t body)
+substitute x t (TupleTerm ys) = TupleTerm $ map (substitute x t) ys
 
 freeVariables :: Term -> Set String
 freeVariables (Var x) = Set.singleton x
@@ -72,6 +74,7 @@ freeVariables (OperatorSectionRight a _) = freeVariables a
 freeVariables (OperatorApp a _ b) = freeVariables a <> freeVariables b
 freeVariables (Fn x a) = Set.delete x (freeVariables a)
 freeVariables (PatternFn p a) = Set.difference (freeVariables a) (varsInPattern p)
+freeVariables (TupleTerm xs) = Set.unions $ map freeVariables xs
 
 allVariables :: Term -> Set String
 allVariables (Var x) = Set.singleton x
@@ -81,6 +84,7 @@ allVariables (OperatorSectionRight a _) = allVariables a
 allVariables (OperatorApp a _ b) = allVariables a <> allVariables b
 allVariables (Fn x a) = Set.insert x $ allVariables a
 allVariables (PatternFn p a) = freeVariables a <> varsInPattern p
+allVariables (TupleTerm xs) = Set.unions $ map allVariables xs
 
 defaultPrecedence :: Int
 defaultPrecedence = -1
@@ -129,6 +133,7 @@ prettyShowPrec n (Fn var body) =
     parenthesizeIf (n > defaultPrecedence) $ "\\" <> prettyShowLambdaTail (VarPattern var) body
 prettyShowPrec n (PatternFn pattern body) =
     parenthesizeIf (n > defaultPrecedence) $ "\\" <> prettyShowLambdaTail pattern body
+prettyShowPrec _ (TupleTerm xs) = "(" <> intercalate ", " (map (prettyShowPrec defaultPrecedence) xs) <> ")"
 
 isLambda :: Term -> Boolean
 isLambda (Fn _ _) = true
