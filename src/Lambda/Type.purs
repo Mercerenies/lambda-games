@@ -89,10 +89,33 @@ appRightPrecedence = 5
 
 prettyShowPrec :: Int -> TType -> String
 prettyShowPrec _ (TVar x) = x
-prettyShowPrec _ (TGround x) = x
 prettyShowPrec _ (TApp (TGround "List") right) =
     -- Special case to pretty-print list types
     "[" <> prettyShowPrec defaultPrecedence right <> "]"
+prettyShowPrec _ (TGround "Tuple0") = "()"
+prettyShowPrec _ (TApp (TApp (TGround "Tuple2") x) y) =
+    let x' = prettyShowPrec defaultPrecedence x
+        y' = prettyShowPrec defaultPrecedence y in
+    "(" <> x' <> ", " <> y' <> ")"
+prettyShowPrec _ (TApp (TApp (TApp (TGround "Tuple3") x) y) z) =
+    let x' = prettyShowPrec defaultPrecedence x
+        y' = prettyShowPrec defaultPrecedence y
+        z' = prettyShowPrec defaultPrecedence z in
+    "(" <> x' <> ", " <> y' <> ", " <> z' <> ")"
+prettyShowPrec _ (TApp (TApp (TApp (TApp (TGround "Tuple4") x) y) z) u) =
+    let x' = prettyShowPrec defaultPrecedence x
+        y' = prettyShowPrec defaultPrecedence y
+        z' = prettyShowPrec defaultPrecedence z
+        u' = prettyShowPrec defaultPrecedence u in
+    "(" <> x' <> ", " <> y' <> ", " <> z' <> ", " <> u' <> ")"
+prettyShowPrec _ (TApp (TApp (TApp (TApp (TApp (TGround "Tuple5") x) y) z) u) v) =
+    let x' = prettyShowPrec defaultPrecedence x
+        y' = prettyShowPrec defaultPrecedence y
+        z' = prettyShowPrec defaultPrecedence z
+        u' = prettyShowPrec defaultPrecedence u
+        v' = prettyShowPrec defaultPrecedence v in
+    "(" <> x' <> ", " <> y' <> ", " <> z' <> ", " <> u' <> ", " <> v' <> ")"
+prettyShowPrec _ (TGround x) = x
 prettyShowPrec n (TApp left right) =
     let left' = prettyShowPrec appLeftPrecedence left
         right' = prettyShowPrec appRightPrecedence right in
