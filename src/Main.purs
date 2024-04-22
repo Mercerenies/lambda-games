@@ -45,4 +45,4 @@ reservedNames' = toList reservedNames
 -- Run the simplification pipeline a couple of times, so we can
 -- simplify as much as is reasonable.
 simplify' :: Predicate -> Predicate
-simplify' = repeatedly 3 simplify
+simplify' = repeatedly 6 simplify
