@@ -7,9 +7,11 @@ module Lambda.Type.Relation(
                             describeRelation,
                             allVariablesWith, allVariables, allQuantifiedVariables,
                             substituteVar,
-                            postOrderTraverseM, postOrderTraverse, alphaRenameQuantified
+                            postOrderTraverseM, postOrderTraverse, alphaRenameQuantified,
+                            renameConflicts
                            ) where
 
+import Lambda.Util (unsafeFromRight, toList)
 import Lambda.Predicate (Predicate(..), equals)
 import Lambda.Predicate (allVariables, allQuantifiedVariables, substitute) as Predicate
 import Lambda.Predicate.Simplify (alphaRenameQuantified) as PredicateSimplify
@@ -18,15 +20,22 @@ import Lambda.Term (allVariables, substitute) as Term
 import Lambda.Type (TType(..))
 import Lambda.Type (substitute) as Type
 import Lambda.PrettyShow (prettyShow)
+import Lambda.Monad.Names (freshStrings)
+import Lambda.Util.InfiniteList (find) as InfiniteList
 
 import Prelude
 import Data.Bifunctor (class Bifunctor, bimap)
+import Data.List (List(..), reverse, (:), zip)
+import Data.Tuple (Tuple(..))
 import Control.Biapply (class Biapply, biapply)
 import Control.Biapplicative (class Biapplicative)
 import Safe.Coerce (coerce)
 import Data.Identity (Identity(..))
 import Data.Set (Set)
-import Data.Set (insert, delete) as Set
+import Data.Set (insert, delete, intersection, member) as Set
+import Data.Foldable (foldl)
+import Data.String.Regex (regex, replace)
+import Data.String.Regex.Flags (noFlags)
 
 -- A Predicate with holes of types a1 and a2 in place of the terms.
 data PredicateZipper a b = PEquals a b |
@@ -129,3 +138,30 @@ alphaRenameQuantified old new = go
     where go (PForall v ttype body) | v == old = PForall new ttype $ substituteVar old new body
           go (PImplies lhs rhs) = PImplies (PredicateSimplify.alphaRenameQuantified old new lhs) rhs
           go x = x
+
+-- Identifies any quantified variables in the second relation which
+-- are also quantified in the first relation, and then renames them to
+-- something that does not appear, in any capacity, in either
+-- relation.
+renameConflicts :: Relation -> Relation -> Relation
+renameConflicts first second =
+      foldl (\rel (Tuple oldVar newVar) -> alphaRenameQuantified oldVar newVar rel) second newVars
+    where conflicts = toList $ allQuantifiedVariables first `Set.intersection` allQuantifiedVariables second
+          newVars = zip conflicts $ chooseNewVariables allVars conflicts
+          allVars = allVariables first <> allVariables second
+
+chooseNewVariables :: Set String -> List String -> List String
+chooseNewVariables usedVars xs = reverse $ chooseNewVariablesAcc usedVars xs Nil
+
+chooseNewVariablesAcc :: Set String -> List String -> List String -> List String
+chooseNewVariablesAcc _ Nil acc = acc
+chooseNewVariablesAcc usedVars (x : xs) ys =
+    let baseVarName = baseName x
+        nameCandidates = freshStrings baseVarName
+        newVarName = InfiniteList.find (\v -> not (v `Set.member` usedVars)) nameCandidates
+    in chooseNewVariablesAcc (Set.insert newVarName usedVars) xs (newVarName : ys)
+
+baseName :: String -> String
+baseName s =
+    let trailingDigitsRe = unsafeFromRight $ regex """\d+$""" noFlags in
+    replace trailingDigitsRe "" s

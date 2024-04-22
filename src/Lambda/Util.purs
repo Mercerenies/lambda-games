@@ -2,7 +2,8 @@
 module Lambda.Util(
                    toList, toUnfoldable,
                    fromChars, guarded,
-                   modifyError, repeatedly
+                   modifyError, repeatedly,
+                   unsafeFromRight
                   ) where
 
 import Data.String.CodeUnits (fromCharArray)
@@ -10,11 +11,12 @@ import Data.List (List(..), (:))
 import Data.List (toUnfoldable) as List
 import Data.Foldable (class Foldable, foldr)
 import Data.Unfoldable (class Unfoldable, replicate)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Control.Alternative (guard)
 import Control.MonadPlus (class MonadPlus)
 import Control.Monad.Error.Class (class MonadError, throwError)
 import Control.Monad.Except.Trans (ExceptT, runExceptT)
+import Effect.Exception.Unsafe (unsafeThrow)
 import Prelude
 
 toList :: forall f a. Foldable f => f a -> List a
@@ -44,3 +46,6 @@ repeatedly :: forall c a. Category c => Int -> c a a -> c a a
 repeatedly n f = foldr compose identity lst
     where lst :: List (c a a)
           lst = replicate n f
+
+unsafeFromRight :: forall a. Either String a -> a
+unsafeFromRight = either unsafeThrow identity
