@@ -3,7 +3,7 @@ module Lambda.Util(
                    toList, toUnfoldable,
                    fromChars, guarded,
                    modifyError, repeatedly,
-                   unsafeFromRight
+                   unsafeFromRight, unsafeFromJust
                   ) where
 
 import Data.String.CodeUnits (fromCharArray)
@@ -12,6 +12,7 @@ import Data.List (toUnfoldable) as List
 import Data.Foldable (class Foldable, foldr)
 import Data.Unfoldable (class Unfoldable, replicate)
 import Data.Either (Either(..), either)
+import Data.Maybe (Maybe, maybe')
 import Control.Alternative (guard)
 import Control.MonadPlus (class MonadPlus)
 import Control.Monad.Error.Class (class MonadError, throwError)
@@ -49,3 +50,6 @@ repeatedly n f = foldr compose identity lst
 
 unsafeFromRight :: forall a. Either String a -> a
 unsafeFromRight = either unsafeThrow identity
+
+unsafeFromJust :: forall a. Maybe a -> a
+unsafeFromJust = maybe' (\_ -> unsafeThrow "unsafeFromJust: Nothing") identity

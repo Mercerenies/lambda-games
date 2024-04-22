@@ -2,20 +2,20 @@
 module Lambda.Type.Parser(expressionParser, parseExpressionT, parseExpression) where
 
 import Lambda.Type (TType(..))
-import Lambda.Util (fromChars, guarded)
+import Lambda.Util (fromChars, guarded, unsafeFromJust)
 
 import Prelude hiding (between)
-import Parsing (ParserT, runParserT, ParseError)
-import Parsing.Combinators (many, try, (<?>), between, sepEndBy1)
+import Parsing (ParserT, runParserT, ParseError, fail)
+import Parsing.Combinators (many, try, (<?>), between, sepBy, sepEndBy1)
 import Parsing.String (char, string, eof)
 import Parsing.String.Basic (letter, digit, space, skipSpaces)
 import Control.Apply (lift2)
 import Control.Alt ((<|>))
 import Control.Lazy (defer)
 import Control.Monad.Rec.Class (class MonadRec)
-import Data.List ((:))
+import Data.List (List, (:), head)
 import Data.Array (notElem)
-import Data.Foldable (foldr)
+import Data.Foldable (foldr, foldl, length)
 import Data.Semigroup.Foldable (foldl1)
 import Data.Maybe (maybe)
 import Data.String.CodePoints (codePointAt, codePointFromChar)
@@ -56,12 +56,28 @@ listExpression :: forall m. Monad m => ParserT String m TType
 listExpression = TApp (TGround "List") <$>
                  between (char '[' *> skipSpaces) (skipSpaces <* char ']') (defer \_ -> expression)
 
+-- Unit tuples, individual parenthesized expressions, and proper
+-- tuples (since they all parse the same way)
+tupleLikeExpression :: forall m. Monad m => ParserT String m TType
+tupleLikeExpression = do
+    xs <- sepBy (defer \_ -> expression) (try $ skipSpaces *> char ',' <* skipSpaces)
+    case length xs of
+      0 -> pure $ foldTupleApp "Tuple0" xs
+      1 -> pure $ unsafeFromJust (head xs) -- safety: head must exist since length xs == 1
+      2 -> pure $ foldTupleApp "Tuple2" xs
+      3 -> pure $ foldTupleApp "Tuple3" xs
+      4 -> pure $ foldTupleApp "Tuple4" xs
+      5 -> pure $ foldTupleApp "Tuple5" xs
+      _ -> fail "Sorry, only tuples of length up to 5 are currently supported"
+  where foldTupleApp :: String -> List TType -> TType
+        foldTupleApp s = foldl TApp (TGround s)
+
 basicExpression :: forall m. Monad m => ParserT String m TType
 basicExpression = var <|>
                   groundTerm <|>
                   forallExpression <|>
                   listExpression <|>
-                  between (char '(' *> skipSpaces) (skipSpaces <* char ')') (defer \_ -> expression)
+                  between (char '(' *> skipSpaces) (skipSpaces <* char ')') tupleLikeExpression
 
 appExpression :: forall m. Monad m => ParserT String m TType
 appExpression = foldl1 TApp <$> sepEndBy1 basicExpression skipSpaces
