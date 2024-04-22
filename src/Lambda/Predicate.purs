@@ -4,6 +4,8 @@ module Lambda.Predicate(
                        ) where
 
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
+import Lambda.MathShow (class MathShow, Latex(..), texttt)
+import Lambda.MathShow (parenthesizeIf) as MathShow
 import Lambda.Term (Term)
 import Lambda.Term (substitute, allVariables) as Term
 import Lambda.Type (TType(..))
@@ -29,6 +31,9 @@ instance Show Predicate where
 
 instance PrettyShow Predicate where
     prettyShow = prettyShowPrec defaultPrecedence
+
+instance MathShow Predicate where
+    mathShow = mathShowPrec defaultPrecedence
 
 substitute :: String -> Term -> Predicate -> Predicate
 substitute x t = go
@@ -106,3 +111,29 @@ prettyShowQuantifiedType t = parenthesizeIf (isComplex t) $ prettyShow t
     where isComplex (TForall _ _) = true
           isComplex (TArrow _ rhs) = isComplex rhs
           isComplex _ = false
+
+mathShowPrec :: Int -> Predicate -> Latex
+mathShowPrec _ (Equals a b) = texttt (prettyShow a) <> Latex " = " <> texttt (prettyShow b)
+mathShowPrec n (Implies lhs rhs) =
+    let lhs' = mathShowPrec impliesLeftPrecedence lhs
+        rhs' = mathShowPrec impliesRightPrecedence rhs in
+    MathShow.parenthesizeIf (n >= impliesLeftPrecedence) $ lhs' <> Latex " \\implies " <> rhs'
+mathShowPrec n (Or lhs rhs) =
+    let lhs' = mathShowPrec orPrecedence lhs
+        rhs' = mathShowPrec orPrecedence rhs in
+    MathShow.parenthesizeIf (n > orPrecedence) $ lhs' <> Latex " \\vee " <> rhs'
+mathShowPrec n (And lhs rhs) =
+    let lhs' = mathShowPrec andPrecedence lhs
+        rhs' = mathShowPrec andPrecedence rhs in
+    MathShow.parenthesizeIf (n > andPrecedence) $ lhs' <> Latex " \\wedge " <> rhs'
+mathShowPrec n (Forall var varType body) =
+    MathShow.parenthesizeIf (n >= impliesLeftPrecedence) $ Latex "\\forall " <> mathShowForall var varType body
+
+-- We collate consecutive foralls over the same domain, to get prettier output.
+mathShowForall :: String -> TType -> Predicate -> Latex
+mathShowForall var varType (Forall var' varType' body') | varType == varType' =
+    texttt var <> Latex ", " <> mathShowForall var' varType' body'
+mathShowForall var varType body =
+    let body' = mathShowPrec defaultPrecedence body
+        varType' = prettyShowQuantifiedType varType in
+    texttt var <> Latex ": " <> texttt varType' <> Latex ". \\, " <> body'
