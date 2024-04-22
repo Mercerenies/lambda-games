@@ -72,12 +72,27 @@ tupleLikeExpression = do
   where foldTupleApp :: String -> List TType -> TType
         foldTupleApp s = foldl TApp (TGround s)
 
+commaSectionExpression :: forall m. Monad m => ParserT String m TType
+commaSectionExpression = do
+  _ <- try $ skipSpaces *> char ','
+  commas <- many (try $ skipSpaces *> char ',')
+  let commaCount = length commas + 1
+  case commaCount of
+    1 -> pure $ TGround "Tuple2"
+    2 -> pure $ TGround "Tuple3"
+    3 -> pure $ TGround "Tuple4"
+    4 -> pure $ TGround "Tuple5"
+    _ -> fail $ "Sorry, only tuples of length up to 5 are currently supported"
+
+parenthesizedExpression :: forall m. Monad m => ParserT String m TType
+parenthesizedExpression = commaSectionExpression <|> tupleLikeExpression
+
 basicExpression :: forall m. Monad m => ParserT String m TType
 basicExpression = var <|>
                   groundTerm <|>
                   forallExpression <|>
                   listExpression <|>
-                  between (char '(' *> skipSpaces) (skipSpaces <* char ')') tupleLikeExpression
+                  between (char '(' *> skipSpaces) (skipSpaces <* char ')') parenthesizedExpression
 
 appExpression :: forall m. Monad m => ParserT String m TType
 appExpression = foldl1 TApp <$> sepEndBy1 basicExpression skipSpaces
