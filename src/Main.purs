@@ -26,8 +26,16 @@ import Data.Either (Either(..))
 
 main :: Effect Unit
 main = do
+  showLicenseNotice
   interface <- makeReadlineInterface
   prompt interface
+
+showLicenseNotice :: Effect Unit
+showLicenseNotice = do
+  log "Lambdagames Copyright 2024 Silvio Mayolo"
+  log "This program comes with ABSOLUTELY NO WARRANTY."
+  log "This is free software, and you are welcome to redistribute it"
+  log "under certain conditions; see COPYING for details."
 
 makeReadlineInterface :: Effect Interface
 makeReadlineInterface = do
