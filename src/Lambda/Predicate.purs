@@ -1,6 +1,6 @@
 
 module Lambda.Predicate(
-                        Predicate(..), equals, substitute, allVariables, allQuantifiedVariables
+                        Predicate(..), substitute, allVariables, allQuantifiedVariables
                        ) where
 
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
@@ -15,7 +15,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 
 -- TODO Can we get this and Relation to all just be specializations of PredicateZipper? It seems kind of silly having a separate type for this.
-data Predicate = Operator String Term Term
+data Predicate = Equals Term Term
                | Implies Predicate Predicate
                | And Predicate Predicate
                | Or Predicate Predicate
@@ -30,12 +30,9 @@ instance Show Predicate where
 instance PrettyShow Predicate where
     prettyShow = prettyShowPrec defaultPrecedence
 
-equals :: Term -> Term -> Predicate
-equals = Operator "="
-
 substitute :: String -> Term -> Predicate -> Predicate
 substitute x t = go
-    where go (Operator op lhs rhs) = Operator op (Term.substitute x t lhs) (Term.substitute x t rhs)
+    where go (Equals lhs rhs) = Equals (Term.substitute x t lhs) (Term.substitute x t rhs)
           go (Implies lhs rhs) = Implies (go lhs) (go rhs)
           go (And lhs rhs) = And (go lhs) (go rhs)
           go (Or lhs rhs) = Or (go lhs) (go rhs)
@@ -47,14 +44,14 @@ substitute x t = go
 --
 -- (TODO Include variables in types here too)
 allVariables :: Predicate -> Set String
-allVariables (Operator _ a b) = Term.allVariables a <> Term.allVariables b
+allVariables (Equals a b) = Term.allVariables a <> Term.allVariables b
 allVariables (Implies lhs rhs) = allVariables lhs <> allVariables rhs
 allVariables (And lhs rhs) = allVariables lhs <> allVariables rhs
 allVariables (Or lhs rhs) = allVariables lhs <> allVariables rhs
 allVariables (Forall x _ body) = Set.insert x (allVariables body)
 
 allQuantifiedVariables :: Predicate -> Set String
-allQuantifiedVariables (Operator _ _ _) = mempty
+allQuantifiedVariables (Equals _ _) = mempty
 allQuantifiedVariables (Implies lhs rhs) = allQuantifiedVariables lhs <> allQuantifiedVariables rhs
 allQuantifiedVariables (And lhs rhs) = allQuantifiedVariables lhs <> allQuantifiedVariables rhs
 allQuantifiedVariables (Or lhs rhs) = allQuantifiedVariables lhs <> allQuantifiedVariables rhs
@@ -76,7 +73,7 @@ andPrecedence :: Int
 andPrecedence = 4
 
 prettyShowPrec :: Int -> Predicate -> String
-prettyShowPrec _ (Operator op a b) = prettyShow a <> " " <> op <> " " <> prettyShow b
+prettyShowPrec _ (Equals a b) = prettyShow a <> " = " <> prettyShow b
 prettyShowPrec n (Implies lhs rhs) =
     let lhs' = prettyShowPrec impliesLeftPrecedence lhs
         rhs' = prettyShowPrec impliesRightPrecedence rhs in

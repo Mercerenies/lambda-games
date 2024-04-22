@@ -13,7 +13,7 @@ module Lambda.Type.Relation(
                            ) where
 
 import Lambda.Util (unsafeFromRight, toList)
-import Lambda.Predicate (Predicate(..), equals)
+import Lambda.Predicate (Predicate(..))
 import Lambda.Predicate (allVariables, allQuantifiedVariables, substitute) as Predicate
 import Lambda.Predicate.Simplify (alphaRenameQuantified) as PredicateSimplify
 import Lambda.Term (Term(..))
@@ -72,7 +72,7 @@ instance Biapplicative PredicateZipper where
 
 runPredicateZipper :: forall a b. PredicateZipper a b -> (a -> Term) -> (b -> Term) -> Predicate
 runPredicateZipper p f g = go p
-    where go (PEquals a b) = equals (f a) (g b)
+    where go (PEquals a b) = Equals (f a) (g b)
           go (PImplies lhs rhs) = Implies lhs (go rhs)
           go (PForall name ttype rhs) = Forall name ttype (go rhs)
 
