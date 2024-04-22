@@ -1,17 +1,20 @@
 
 module Lambda.Term(
-                   Term(..),
+                   Term(..), Pattern(..),
+                   varsInPattern,
                    substitute, freeVariables, allVariables
                   ) where
 
-import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
+import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
+import Data.List (List)
 import Data.Set (Set)
-import Data.Set (singleton, delete, insert) as Set
+import Data.Set (singleton, delete, insert, unions, member, difference) as Set
 import Data.Tuple (Tuple(..), fst, snd)
+import Data.Foldable (intercalate)
 
 data Term = Var String
           | App Term Term
@@ -19,15 +22,33 @@ data Term = Var String
           | OperatorSectionRight Term String
           | OperatorApp Term String Term
           | Fn String Term -- Lambda abstraction
+          | PatternFn Pattern Term -- Lambda abstraction (with pattern matching)
+
+data Pattern = VarPattern String
+             | TuplePattern (List Pattern)
 
 derive instance Eq Term
 derive instance Generic Term _
 
+derive instance Eq Pattern
+derive instance Generic Pattern _
+
 instance showTerm :: Show Term where
+    show x = genericShow x
+
+instance showPattern :: Show Pattern where
     show x = genericShow x
 
 instance PrettyShow Term where
     prettyShow = prettyShowPrec defaultPrecedence
+
+instance PrettyShow Pattern where
+    prettyShow (VarPattern v) = show v
+    prettyShow (TuplePattern xs) = "(" <> intercalate ", " (map prettyShow xs) <> ")"
+
+varsInPattern :: Pattern -> Set String
+varsInPattern (VarPattern v) = Set.singleton v
+varsInPattern (TuplePattern xs) = Set.unions $ map varsInPattern xs
 
 substitute :: String -> Term -> Term -> Term
 substitute x t (Var x') | x == x' = t
@@ -39,6 +60,9 @@ substitute x t (OperatorApp lhs op rhs) = OperatorApp (substitute x t lhs) op (s
 substitute x t (Fn x' body)
     | x == x' = Fn x' t
     | otherwise = Fn x' (substitute x t body)
+substitute x t (PatternFn p body)
+    | x `Set.member` varsInPattern p = PatternFn p body
+    | otherwise = PatternFn p (substitute x t body)
 
 freeVariables :: Term -> Set String
 freeVariables (Var x) = Set.singleton x
@@ -47,6 +71,7 @@ freeVariables (OperatorSectionLeft _ a) = freeVariables a
 freeVariables (OperatorSectionRight a _) = freeVariables a
 freeVariables (OperatorApp a _ b) = freeVariables a <> freeVariables b
 freeVariables (Fn x a) = Set.delete x (freeVariables a)
+freeVariables (PatternFn p a) = Set.difference (freeVariables a) (varsInPattern p)
 
 allVariables :: Term -> Set String
 allVariables (Var x) = Set.singleton x
@@ -55,6 +80,7 @@ allVariables (OperatorSectionLeft _ a) = allVariables a
 allVariables (OperatorSectionRight a _) = allVariables a
 allVariables (OperatorApp a _ b) = allVariables a <> allVariables b
 allVariables (Fn x a) = Set.insert x $ allVariables a
+allVariables (PatternFn p a) = freeVariables a <> varsInPattern p
 
 defaultPrecedence :: Int
 defaultPrecedence = -1
@@ -102,3 +128,7 @@ prettyShowPrec n (OperatorApp a o b) =
 prettyShowPrec n (Fn var body) =
     let body' = prettyShowPrec defaultPrecedence body in
     parenthesizeIf (n > defaultPrecedence) $ "\\" <> var <> " -> " <> body'
+prettyShowPrec n (PatternFn pattern body) =
+    let pattern' = prettyShow pattern
+        body' = prettyShowPrec defaultPrecedence body in
+    parenthesizeIf (n > defaultPrecedence) $ "\\" <> pattern' <> " -> " <> body'
