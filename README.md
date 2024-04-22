@@ -24,3 +24,9 @@ Run our (currently meager) test suite with `npx spago test`.
 Lambdagames can be exported as a JavaScript module with `npx spago
 bundle-module --main 'Lambda.Module'`. Adding the `--minify` flag is
 strongly recommended for non-debug builds.
+
+## License
+
+Lambdagames is free software, released under the GNU General Public
+License as published by the Free Software Foundation, either version 3
+of the License, or (at your option) any later version. See `COPYING`.
