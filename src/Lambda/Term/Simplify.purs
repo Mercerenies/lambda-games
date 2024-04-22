@@ -2,7 +2,8 @@
 module Lambda.Term.Simplify(
                             postOrderTraverseM, postOrderTraverse,
                             simplify, simplifyReversedApp, simplifyEtaAbstraction,
-                            simplifyIdentityApp, simplifyFmapId, simplifySplitId
+                            simplifyIdentityApp, simplifyFmapId, simplifySplitId,
+                            simplifyChoiceSplitId
                            ) where
 
 import Lambda.Term (Term(..), freeVariables, Pattern(..))
@@ -33,7 +34,7 @@ postOrderTraverse f = coerce <<< postOrderTraverseM (Identity <<< f)
 
 simplify :: Term -> Term
 simplify = simplifyReversedApp >>> simplifyEtaAbstraction >>> simplifyFmapId >>>
-           simplifySplitId >>> simplifyIdentityApp
+           simplifySplitId >>> simplifyChoiceSplitId >>>simplifyIdentityApp
 
 -- This oddly specific simplification will eliminate the unnecessary
 -- ($ a) operator section (in favor of simpler syntax) when a function
@@ -65,6 +66,14 @@ simplifySplitId = postOrderTraverse $ case _ of
         | isIdentityFunction f && isIdentityFunction g -> f
         | isIdentityFunction f -> Var "second" `App` g
         | isIdentityFunction g -> Var "first" `App` f
+    other -> other
+
+simplifyChoiceSplitId :: Term -> Term
+simplifyChoiceSplitId = postOrderTraverse $ case _ of
+    OperatorApp f "+++" g
+        | isIdentityFunction f && isIdentityFunction g -> f
+        | isIdentityFunction f -> Var "right" `App` g
+        | isIdentityFunction g -> Var "left" `App` f
     other -> other
 
 isIdentityFunction :: Term -> Boolean

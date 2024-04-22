@@ -2,7 +2,7 @@
 module Lambda.Type.Builtins(
                             reservedNames,
                             basicBuiltin, listBuiltin, tuple2Builtin, tuple3Builtin,
-                            tuple4Builtin, tuple5Builtin,
+                            tuple4Builtin, tuple5Builtin, eitherBuiltin,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
@@ -34,7 +34,7 @@ import Prelude
 -- Names that we might introduce and assume are not being shadowed by
 -- a lambda parameter anywhere.
 reservedNames :: Array String
-reservedNames = ["fmap", "first", "second"]
+reservedNames = ["fmap", "first", "second", "Left", "Right", "left", "right"]
 
 -- Names for use in generated lambda expressions.
 temporaryVarNames :: InfiniteList String
@@ -132,6 +132,17 @@ tuple5Builtin = Builtin {
                   nameStream: freshStrings "tup"
                 }
 
+eitherType :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
+eitherType = lambda2 \ra rb -> zipRelationsWith liftToEither liftToEither ra rb
+    where liftToEither :: TermHole -> TermHole -> TermHole
+          liftToEither a b = App (OperatorApp (liftToLambda a) "+++" (liftToLambda b))
+
+eitherBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+eitherBuiltin = Builtin {
+                  relation: eitherType,
+                  nameStream: freshStrings "eit"
+                }
+
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Int" $ basicBuiltin (freshStrings "n"),
@@ -144,7 +155,8 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Tuple2" tuple2Builtin,
                     Tuple "Tuple3" tuple3Builtin,
                     Tuple "Tuple4" tuple4Builtin,
-                    Tuple "Tuple5" tuple5Builtin
+                    Tuple "Tuple5" tuple5Builtin,
+                    Tuple "Either" eitherBuiltin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
