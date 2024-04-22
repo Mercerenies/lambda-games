@@ -2,7 +2,7 @@
 module Lambda.Term(
                    Term(..), Pattern(..),
                    varsInPattern,
-                   substitute, freeVariables, allVariables
+                   substitute, freeVariables, allVariables, isLambda
                   ) where
 
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
@@ -43,7 +43,7 @@ instance PrettyShow Term where
     prettyShow = prettyShowPrec defaultPrecedence
 
 instance PrettyShow Pattern where
-    prettyShow (VarPattern v) = show v
+    prettyShow (VarPattern v) = v
     prettyShow (TuplePattern xs) = "(" <> intercalate ", " (map prettyShow xs) <> ")"
 
 varsInPattern :: Pattern -> Set String
@@ -126,9 +126,16 @@ prettyShowPrec n (OperatorApp a o b) =
         b' = prettyShowPrec (operatorPrecedenceRight o) b in
     parenthesizeIf (n >= operatorPrecedenceMax o) $ a' <> " " <> o <> " " <> b'
 prettyShowPrec n (Fn var body) =
-    let body' = prettyShowPrec defaultPrecedence body in
-    parenthesizeIf (n > defaultPrecedence) $ "\\" <> var <> " -> " <> body'
+    parenthesizeIf (n > defaultPrecedence) $ "\\" <> prettyShowLambdaTail (VarPattern var) body
 prettyShowPrec n (PatternFn pattern body) =
-    let pattern' = prettyShow pattern
-        body' = prettyShowPrec defaultPrecedence body in
-    parenthesizeIf (n > defaultPrecedence) $ "\\" <> pattern' <> " -> " <> body'
+    parenthesizeIf (n > defaultPrecedence) $ "\\" <> prettyShowLambdaTail pattern body
+
+isLambda :: Term -> Boolean
+isLambda (Fn _ _) = true
+isLambda (PatternFn _ _) = true
+isLambda _ = false
+
+prettyShowLambdaTail :: Pattern -> Term -> String
+prettyShowLambdaTail p (Fn v body) = prettyShow p <> " " <> prettyShowLambdaTail (VarPattern v) body
+prettyShowLambdaTail p (PatternFn p' body) = prettyShow p <> " " <> prettyShowLambdaTail p' body
+prettyShowLambdaTail p body = prettyShow p <> " -> " <> prettyShowPrec defaultPrecedence body
