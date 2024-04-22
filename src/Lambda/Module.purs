@@ -3,27 +3,43 @@
 -- bundle.
 
 module Lambda.Module(
-                     parseAndDescribe
+                     parseAndDescribe, parseAndDescribeLatex,
+                     parseAndDescribeLatexEff
                     ) where
-
-import Prelude
 
 import Lambda.Type.Builtins (allBuiltins, reservedNames)
 import Lambda.Predicate (Predicate)
 import Lambda.Predicate.Simplify (simplify)
 import Lambda.Util (toList, repeatedly)
 import Lambda.Type.Parser (parseExpression)
-import Lambda.Type.Free (describeFreeTheoremWith)
+import Lambda.Type.Free (describeFreeTheorem, describeFreeTheoremLatex)
 import Lambda.Type (makeClosed)
+import Lambda.MathShow (Latex)
+
+import Prelude
 import Data.Either (Either)
 import Data.Bifunctor (lmap)
 import Data.List (List)
+import Effect (Effect)
+import Effect.Exception (Error)
+import Control.Monad.Error.Class (liftEither)
 
 parseAndDescribe :: String -> Either String String
 parseAndDescribe input = do
   ttype <- lmap show $ parseExpression input
   let ttype' = makeClosed ttype
-  lmap show $ describeFreeTheoremWith simplify' allBuiltins reservedNames' ttype'
+  lmap show $ describeFreeTheorem simplify' allBuiltins reservedNames' ttype'
+
+parseAndDescribeLatex :: String -> Either String Latex
+parseAndDescribeLatex input = do
+  ttype <- lmap show $ parseExpression input
+  let ttype' = makeClosed ttype
+  lmap show $ describeFreeTheoremLatex simplify' allBuiltins reservedNames' ttype'
+
+parseAndDescribeLatexEff :: String -> Effect Latex
+parseAndDescribeLatexEff = liftEither <<< lmap toError <<< parseAndDescribeLatex
+
+foreign import toError :: String -> Error
 
 reservedNames' :: List String
 reservedNames' = toList reservedNames

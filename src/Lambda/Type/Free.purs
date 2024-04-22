@@ -3,7 +3,7 @@ module Lambda.Type.Free(
                         LambdaContextT(..), unLambdaContextT, runLambdaContextT,
                         relationify, relationifyWithBindings,
                         FreeTheoremOptions(..), describeFreeTheoremGeneral,
-                        describeFreeTheorem, describeFreeTheoremWith
+                        describeFreeTheorem, describeFreeTheoremLatex
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
@@ -16,6 +16,7 @@ import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate)
 import Lambda.Monad.Names (NamesT, withFreshName, withFreshName2, freshStrings, runNamesTWith, class MonadNames)
 import Lambda.PrettyShow (prettyShow)
+import Lambda.MathShow (mathShow, Latex(..), texttt)
 
 import Data.Tuple (Tuple(..))
 import Data.Maybe (Maybe(..))
@@ -113,10 +114,10 @@ describeFreeTheoremGeneral (FreeTheoremOptions opts) t =
             let description = opts.simplifier (runRelation r (Var a) (Var a))
             pure $ opts.finalizer a t description
 
-describeFreeTheoremWith :: (Predicate -> Predicate) ->
-                           BuiltinsMap (LambdaContextT (Either TypeError)) ->
-                           List String -> TType -> Either TypeError String
-describeFreeTheoremWith simplifier builtinsMap reservedNames =
+describeFreeTheorem :: (Predicate -> Predicate) ->
+                       BuiltinsMap (LambdaContextT (Either TypeError)) ->
+                       List String -> TType -> Either TypeError String
+describeFreeTheorem simplifier builtinsMap reservedNames =
     describeFreeTheoremGeneral (FreeTheoremOptions {
                                   simplifier, builtinsMap,
                                   reservedNames, finalizer
@@ -124,6 +125,13 @@ describeFreeTheoremWith simplifier builtinsMap reservedNames =
   where finalizer a t description =
             "If " <> a <> ": " <> prettyShow t <> " then " <> prettyShow description
 
-describeFreeTheorem :: BuiltinsMap (LambdaContextT (Either TypeError)) ->
-                       List String -> TType -> Either TypeError String
-describeFreeTheorem = describeFreeTheoremWith identity
+describeFreeTheoremLatex :: (Predicate -> Predicate) ->
+                            BuiltinsMap (LambdaContextT (Either TypeError)) ->
+                            List String -> TType -> Either TypeError Latex
+describeFreeTheoremLatex simplifier builtinsMap reservedNames =
+    describeFreeTheoremGeneral (FreeTheoremOptions {
+                                  simplifier, builtinsMap,
+                                  reservedNames, finalizer
+                                })
+  where finalizer a t description =
+            texttt a <> Latex ": " <> texttt (prettyShow t) <> Latex " \\implies " <> mathShow description
