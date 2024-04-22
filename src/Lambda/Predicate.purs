@@ -1,6 +1,6 @@
 
 module Lambda.Predicate(
-                        Predicate(..), equals, substitute, allVariables
+                        Predicate(..), equals, substitute, allVariables, allQuantifiedVariables
                        ) where
 
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
@@ -43,6 +43,8 @@ substitute x t = go
               | otherwise = Forall x' ttype $ go body
 
 -- All variables at BOTH the term and predicate level.
+--
+-- (TODO Include variables in types here too)
 allVariables :: Predicate -> Set String
 allVariables (Operator _ a b) = Term.allVariables a <> Term.allVariables b
 allVariables (Implies lhs rhs) = allVariables lhs <> allVariables rhs

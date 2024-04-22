@@ -26,7 +26,7 @@ import Data.Either (Either)
 identifier :: forall m. Monad m => ParserT String m String
 identifier = try (guarded isNotKeyword body)
     where body = fromChars <$> lift2 (:) (letter <|> char '_') (many (char '_' <|> letter <|> digit))
-          isNotKeyword s = s `notElem` ["forall"]
+          isNotKeyword s = s `notElem` ["forall", "_"]
 
 varName :: forall m. Monad m => ParserT String m String
 varName = try (guarded startsWithLowercase identifier) <?> "expected type variable"

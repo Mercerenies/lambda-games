@@ -4,11 +4,14 @@ module Lambda.Type.Relation(
                             Relation, runRelation, identityRelation,
                             rImplies, rForall,
                             mapTerms,
-                            describeRelation
+                            describeRelation,
+                            allVariablesWith, allVariables, allQuantifiedVariables
                            ) where
 
 import Lambda.Predicate (Predicate(..), equals)
-import Lambda.Term (Term)
+import Lambda.Predicate (allVariables, allQuantifiedVariables) as Predicate
+import Lambda.Term (Term(..))
+import Lambda.Term (allVariables) as Term
 import Lambda.Type (TType)
 import Lambda.PrettyShow (prettyShow)
 
@@ -16,6 +19,8 @@ import Prelude
 import Data.Bifunctor (class Bifunctor, bimap)
 import Control.Biapply (class Biapply, biapply)
 import Control.Biapplicative (class Biapplicative)
+import Data.Set (Set)
+import Data.Set (insert, delete) as Set
 
 -- A Predicate with holes of types a1 and a2 in place of the terms.
 data PredicateZipper a b = PEquals a b |
@@ -70,3 +75,22 @@ mapTerms f g = bimap (_ <<< f) (_ <<< g)
 
 describeRelation :: Relation -> Term -> Term -> String
 describeRelation r left right = prettyShow (runRelation r left right)
+
+-- (TODO Include variables in types here too)
+allVariablesWith :: forall a b. (a -> Set String) -> (b -> Set String) -> (Predicate -> Set String) ->
+                    PredicateZipper a b -> Set String
+allVariablesWith fa fb fpred = go
+    where go (PEquals a b) = fa a <> fb b
+          go (PImplies lhs rhs) = fpred lhs <> go rhs
+          go (PForall name _ rhs) = Set.insert name (go rhs)
+
+allVariables :: PredicateZipper (Term -> Term) (Term -> Term) -> Set String
+allVariables = allVariablesWith termVars termVars Predicate.allVariables
+    where -- For term variables, we simply substitute `TVar "_"` in
+          -- and check the resulting term. Our parser forbids the use
+          -- of `TVar "_"` as a variable name, so we can safely remove
+          -- it from the resutl.
+          termVars termFunction = Set.delete "_" $ Term.allVariables (termFunction (Var "_"))
+
+allQuantifiedVariables :: forall a b. PredicateZipper a b -> Set String
+allQuantifiedVariables = allVariablesWith (const mempty) (const mempty) Predicate.allQuantifiedVariables
