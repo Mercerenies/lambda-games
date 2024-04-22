@@ -2,7 +2,7 @@
 module Lambda.Term.Simplify(
                             postOrderTraverseM, postOrderTraverse,
                             simplify, simplifyReversedApp, simplifyEtaAbstraction,
-                            simplifyFmapIdApp, simplifyFmapId
+                            simplifyIdentityApp, simplifyFmapId, simplifySplitId
                            ) where
 
 import Lambda.Term (Term(..), freeVariables)
@@ -26,7 +26,8 @@ postOrderTraverse :: (Term -> Term) -> Term -> Term
 postOrderTraverse f = coerce <<< postOrderTraverseM (Identity <<< f)
 
 simplify :: Term -> Term
-simplify = simplifyReversedApp >>> simplifyEtaAbstraction >>> simplifyFmapIdApp >>> simplifyFmapId
+simplify = simplifyReversedApp >>> simplifyEtaAbstraction >>> simplifyFmapId >>>
+           simplifySplitId >>> simplifyIdentityApp
 
 -- This oddly specific simplification will eliminate the unnecessary
 -- ($ a) operator section (in favor of simpler syntax) when a function
@@ -42,18 +43,22 @@ simplifyEtaAbstraction = postOrderTraverse $ case _ of
     Fn x (App f (Var x')) | x == x' && not (x `Set.member` freeVariables f) -> f
     other -> other
 
--- TODO This is a specialized form of simplifyFmapId that runs for
--- (fmap (\x -> x) body) and completely removes the whole fmap call.
--- If we get proper beta reduction simplifiers, this should become
--- unnecessary as a special case.
-simplifyFmapIdApp :: Term -> Term
-simplifyFmapIdApp = postOrderTraverse $ case _ of
-    App (App (Var "fmap") func) body | isIdentityFunction func -> body
+simplifyIdentityApp :: Term -> Term
+simplifyIdentityApp = postOrderTraverse $ case _ of
+    App func body | isIdentityFunction func -> body
     other -> other
 
 simplifyFmapId :: Term -> Term
 simplifyFmapId = postOrderTraverse $ case _ of
     App (Var "fmap") func | isIdentityFunction func -> func
+    other -> other
+
+simplifySplitId :: Term -> Term
+simplifySplitId = postOrderTraverse $ case _ of
+    OperatorApp f "***" g
+        | isIdentityFunction f && isIdentityFunction g -> f
+        | isIdentityFunction f -> Var "second" `App` g
+        | isIdentityFunction g -> Var "first" `App` f
     other -> other
 
 isIdentityFunction :: Term -> Boolean

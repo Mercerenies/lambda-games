@@ -29,7 +29,7 @@ import Prelude
 -- Names that we might introduce and assume are not being shadowed by
 -- a lambda parameter anywhere.
 reservedNames :: Array String
-reservedNames = ["fmap"]
+reservedNames = ["fmap", "first", "second"]
 
 -- Names for use in generated lambda expressions.
 temporaryVarNames :: InfiniteList String
