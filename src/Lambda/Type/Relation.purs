@@ -1,14 +1,14 @@
 
 module Lambda.Type.Relation(
                             PredicateZipper, runPredicateZipper,
-                            Relation, runRelation, identityRelation,
+                            TermHole, Relation, runRelation, identityRelation,
                             rImplies, rForall,
                             mapTerms,
                             describeRelation,
                             allVariablesWith, allVariables, allQuantifiedVariables,
                             substituteVar,
                             postOrderTraverseM, postOrderTraverse, alphaRenameQuantified,
-                            renameConflicts
+                            renameConflicts, zipRelationsWith
                            ) where
 
 import Lambda.Util (unsafeFromRight, toList)
@@ -27,7 +27,7 @@ import Prelude
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.List (List(..), reverse, (:), zip)
 import Data.Tuple (Tuple(..))
-import Control.Biapply (class Biapply, biapply)
+import Control.Biapply (class Biapply, biapply, bilift2)
 import Control.Biapplicative (class Biapplicative)
 import Safe.Coerce (coerce)
 import Data.Identity (Identity(..))
@@ -42,10 +42,12 @@ data PredicateZipper a b = PEquals a b |
                            PImplies Predicate (PredicateZipper a b) | -- Note: Left-hand is still just Predicate for now
                            PForall String TType (PredicateZipper a b)
 
+type TermHole = Term -> Term
+
 -- A relation is defined to be a predicate quantified by two terms.
 -- You can think of it as (Term -> Term -> Predicate) but more
 -- restricted so we can introspect on the values.
-type Relation = PredicateZipper (Term -> Term) (Term -> Term)
+type Relation = PredicateZipper TermHole TermHole
 
 -- Note: The Bifunctor, Biapply, and Biapplicative instances might
 -- look a little weird, but they do obey the corresponding typeclass
@@ -165,3 +167,9 @@ baseName :: String -> String
 baseName s =
     let trailingDigitsRe = unsafeFromRight $ regex """\d+$""" noFlags in
     replace trailingDigitsRe "" s
+
+zipRelationsWith :: (TermHole -> TermHole -> TermHole) -> (TermHole -> TermHole -> TermHole) ->
+                    Relation -> Relation -> Relation
+zipRelationsWith leftMap rightMap left right =
+    let right' = renameConflicts left right in
+    bilift2 leftMap rightMap left right'

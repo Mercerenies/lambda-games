@@ -1,11 +1,11 @@
 
 module Lambda.Type.Builtins(
                             reservedNames,
-                            basicBuiltin, listBuiltin,
+                            basicBuiltin, listBuiltin, tuple2Builtin,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
-import Lambda.Type.Relation (Relation, identityRelation)
+import Lambda.Type.Relation (Relation, identityRelation, zipRelationsWith, TermHole)
 import Lambda.Type.Functions (Lambda(..))
 import Lambda.Type.Functions.Factory (lambda1, lambda2)
 import Lambda.Type.Error (class FromKindError)
@@ -54,7 +54,7 @@ basicBuiltin nameStream = Builtin {
 
 listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
 listType = lambda1 \r -> bimap liftToFmap liftToFmap r
-    where liftToFmap :: (Term -> Term) -> Term -> Term
+    where liftToFmap :: TermHole -> TermHole
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
 listNames :: InfiniteList String
@@ -66,8 +66,16 @@ listBuiltin = Builtin {
                 nameStream: listNames
               }
 
---tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
---tuple2Type = lambda2 \ra rb -> 
+tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
+tuple2Type = lambda2 \ra rb -> zipRelationsWith liftToTuple liftToTuple ra rb
+    where liftToTuple :: TermHole -> TermHole -> TermHole
+          liftToTuple lhs rhs = App (OperatorApp (liftToLambda lhs) "***" (liftToLambda rhs))
+
+tuple2Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+tuple2Builtin = Builtin {
+                  relation: tuple2Type,
+                  nameStream: freshStrings "tup"
+                }
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
@@ -76,7 +84,8 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Double" $ basicBuiltin (freshStrings "d"),
                     Tuple "String" $ basicBuiltin (freshStrings "s"),
                     Tuple "Boolean" $ basicBuiltin (freshStrings "b"),
-                    Tuple "List" $ listBuiltin
+                    Tuple "List" listBuiltin,
+                    Tuple "Tuple2" tuple2Builtin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
