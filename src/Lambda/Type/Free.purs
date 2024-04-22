@@ -2,6 +2,7 @@
 module Lambda.Type.Free(
                         LambdaContextT(..), unLambdaContextT, runLambdaContextT,
                         relationify, relationifyWithBindings,
+                        FreeTheoremOptions(..), describeFreeTheoremGeneral,
                         describeFreeTheorem, describeFreeTheoremWith
                        ) where
 
@@ -94,17 +95,34 @@ relationifyWithBindings bindings (TForall x body) = do
       pure $ Ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
-describeFreeTheoremWith :: (Predicate -> Predicate) ->
-                           BuiltinsMap (LambdaContextT (Either TypeError)) ->
-                           List String -> TType -> Either TypeError String
-describeFreeTheoremWith simplifier builtins reservedNames t = runLambdaContextT fullDescription builtins reservedNames
-  where fullDescription :: LambdaContextT (Either TypeError) String
+newtype FreeTheoremOptions a = FreeTheoremOptions {
+      simplifier :: Predicate -> Predicate,
+      builtinsMap :: BuiltinsMap (LambdaContextT (Either TypeError)),
+      reservedNames :: List String,
+      finalizer :: String -> TType -> Predicate -> a
+    }
+
+describeFreeTheoremGeneral :: forall a. FreeTheoremOptions a -> TType -> Either TypeError a
+describeFreeTheoremGeneral (FreeTheoremOptions opts) t =
+    runLambdaContextT fullDescription opts.builtinsMap opts.reservedNames
+  where fullDescription :: LambdaContextT (Either TypeError) a
         fullDescription = do
           namer <- asks variableNamer
           withFreshName (suggestedVariableName namer t) $ \a -> do
             r <- relationify t >>= expectGround
-            let description = prettyShow $ simplifier (runRelation r (Var a) (Var a))
-            pure $ a <> " ~ " <> a <> " if " <> description
+            let description = opts.simplifier (runRelation r (Var a) (Var a))
+            pure $ opts.finalizer a t description
+
+describeFreeTheoremWith :: (Predicate -> Predicate) ->
+                           BuiltinsMap (LambdaContextT (Either TypeError)) ->
+                           List String -> TType -> Either TypeError String
+describeFreeTheoremWith simplifier builtinsMap reservedNames =
+    describeFreeTheoremGeneral (FreeTheoremOptions {
+                                  simplifier, builtinsMap,
+                                  reservedNames, finalizer
+                                })
+  where finalizer a t description =
+            "If " <> a <> ": " <> prettyShow t <> " then " <> prettyShow description
 
 describeFreeTheorem :: BuiltinsMap (LambdaContextT (Either TypeError)) ->
                        List String -> TType -> Either TypeError String
