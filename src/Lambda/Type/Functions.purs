@@ -19,9 +19,8 @@ module Lambda.Type.Functions(
                              getKind, assertKind, expectFunction, expectGround
                             ) where
 
-import Lambda.Type.Kind (TKind(..), GroundKind(..))
+import Lambda.Type.Kind (TKind(..), GroundKind)
 import Lambda.Type.Error (class FromKindError, kindError)
-import Lambda.Type.Relation (Relation)
 
 import Prelude
 import Control.Monad.Error.Class (class MonadError, throwError)
@@ -34,10 +33,6 @@ type LambdaFunction m r = Lambda m r -> m (Lambda m r)
 
 class GroundKindInferrable a where
     getGroundKind :: a -> GroundKind
-
--- TODO TEMPORARY INSTANCE
-instance GroundKindInferrable Relation where
-    getGroundKind _ = GType
 
 getKind :: forall m r. GroundKindInferrable r => Lambda m r -> TKind
 getKind (Ground g) = Ty $ getGroundKind g

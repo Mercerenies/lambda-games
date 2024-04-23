@@ -34,6 +34,8 @@ import Lambda.Term (Term(..))
 import Lambda.Term (allVariables, substitute) as Term
 import Lambda.Type (TType(..))
 import Lambda.Type (substitute) as Type
+import Lambda.Type.Kind (GroundKind(..))
+import Lambda.Type.Functions (class GroundKindInferrable)
 import Lambda.PrettyShow (prettyShow)
 import Lambda.Monad.Names (freshStrings)
 import Lambda.Util.InfiniteList (find) as InfiniteList
@@ -63,6 +65,10 @@ type TermHole = Term -> Term
 -- You can think of it as (Term -> Term -> Predicate) but more
 -- restricted so we can introspect on the values.
 type Relation = PredicateZipper TermHole TermHole
+
+-- All PredicateZippers are assumed to be of kind Type.
+instance GroundKindInferrable (PredicateZipper a b) where
+    getGroundKind _ = GType
 
 -- Note: The Bifunctor, Biapply, and Biapplicative instances might
 -- look a little weird, but they do obey the corresponding typeclass
