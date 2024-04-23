@@ -1,6 +1,7 @@
 
 module Lambda.Type.Typeclass(
-                              TypeclassBody(..), TypeclassFunction(..), MethodName(..)
+                              TypeclassBody(..), TypeclassFunction(..), MethodName(..),
+                              WithContexts(..)
                              ) where
 
 import Lambda.Type (TType)
