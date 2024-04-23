@@ -21,9 +21,12 @@ Run our (currently meager) test suite with `npx spago test`.
 
 ## Building as a JS Module
 
-Lambdagames can be exported as a JavaScript module with `npx spago
-bundle-module --main 'Lambda.Module'`. Adding the `--minify` flag is
-strongly recommended for non-debug builds.
+Lambdagames can be exported as a JavaScript module with
+
+    npx spago bundle-module --main 'Lambda.Module'
+
+Adding the `--minify` flag is strongly recommended for non-debug
+builds.
 
 ## License
 
