@@ -14,9 +14,7 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions.Factory(
-                                     lambda0, lambda1, lambda2, lambda3, lambda4, lambda5,
-                                     Mono, runMono, mono,
-                                     class MonoLambda, monoLambda, monoKind
+                                     lambda0, lambda1, lambda2, lambda3, lambda4, lambda5
                                     ) where
 
 -- Helpers for producing Lambdas of various function types.
@@ -34,7 +32,7 @@ import Control.Monad.Error.Class (class MonadError)
 -- Helper for producing lambdas of kind Type
 lambda0 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
            r -> Lambda m r
-lambda0 f = monoLambda $ mono f
+lambda0 = Ground
 
 -- Helper for producing lambdas of kind (Type -> Type)
 lambda1 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
