@@ -14,8 +14,6 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Free(
-                        LambdaContextT(..),
-                        unLambdaContextT, runLambdaContextT,
                         relationify,
                         FreeTheoremOptions(..), describeFreeTheoremGeneral,
                         describeFreeTheorem, describeFreeTheoremLatex
@@ -30,9 +28,10 @@ import Lambda.Type.LambdaContext.FreeTheoremEnv (FreeTheoremEnv, withBinding, lo
                                                  askVariableNamer, doBoundSubstitutionsLeft,
                                                  doBoundSubstitutionsRight)
 import Lambda.Type.LambdaContext.FreeTheoremEnv (fromBuiltinsMap) as FreeTheoremEnv
+import Lambda.Type.LambdaContext (LambdaContextT, runLambdaContextT)
 import Lambda.Term (Term(..))
 import Lambda.Predicate (Predicate)
-import Lambda.Monad.Names (NamesT, withFreshName, withFreshName2, freshStrings, runNamesTWith, class MonadNames)
+import Lambda.Monad.Names (withFreshName, withFreshName2, freshStrings)
 import Lambda.PrettyShow (prettyShow)
 import Lambda.MathShow (mathShow, Latex(..), texttt)
 
@@ -40,35 +39,8 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Data.List (List)
 import Data.Either (Either)
-import Data.Newtype (class Newtype)
-import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError)
-import Control.Monad.Reader.Trans (ReaderT, runReaderT)
-import Control.Monad.Reader.Class (class MonadAsk, class MonadReader)
+import Control.Monad.Error.Class (class MonadError, throwError)
 import Prelude
-
--- The type that Lambda functions (at the type level) must run in (for
--- underlying monad m).
-newtype LambdaContextT m a =
-    LambdaContextT (ReaderT (FreeTheoremEnv (LambdaContextT m)) (NamesT String m) a)
-
-derive instance Newtype (LambdaContextT m a) _
-derive newtype instance Functor m => Functor (LambdaContextT m)
-derive newtype instance Apply m => Apply (LambdaContextT m)
-derive newtype instance Applicative m => Applicative (LambdaContextT m)
-derive newtype instance Bind m => Bind (LambdaContextT m)
-derive newtype instance Monad m => Monad (LambdaContextT m)
-derive newtype instance MonadThrow e m => MonadThrow e (LambdaContextT m)
-derive newtype instance MonadError e m => MonadError e (LambdaContextT m)
-derive newtype instance Monad m => MonadAsk (FreeTheoremEnv (LambdaContextT m)) (LambdaContextT m)
-derive newtype instance Monad m => MonadReader (FreeTheoremEnv (LambdaContextT m)) (LambdaContextT m)
-derive newtype instance Monad m => MonadNames String (LambdaContextT m)
-
-unLambdaContextT :: forall m a. LambdaContextT m a -> ReaderT (FreeTheoremEnv (LambdaContextT m)) (NamesT String m) a
-unLambdaContextT (LambdaContextT x) = x
-
-runLambdaContextT :: forall m a. Monad m =>
-                     LambdaContextT m a -> FreeTheoremEnv (LambdaContextT m) -> List String -> m a
-runLambdaContextT (LambdaContextT x) r reservedNames = runNamesTWith reservedNames (runReaderT x r)
 
 appSection :: Term -> Term
 appSection x = OperatorSectionLeft "$" x
