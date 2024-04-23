@@ -21,9 +21,9 @@ module Lambda.Type.Functions.Factory(
 
 -- Helpers for producing Lambdas of various function types.
 
-import Lambda.Type.Functions (Lambda(..), expectGround)
+import Lambda.Type.Functions (Lambda(..), expectGround, class GroundKindInferrable)
 import Lambda.Type.Error (class FromKindError)
-import Lambda.Type.Kind (TKind(..))
+import Lambda.Type.Kind (TKind(..), GroundKind(..))
 
 import Prelude
 import Data.Identity (Identity(..))
@@ -32,27 +32,33 @@ import Type.Proxy (Proxy(..))
 import Control.Monad.Error.Class (class MonadError)
 
 -- Helper for producing lambdas of kind Type
-lambda0 :: forall e m r. FromKindError e => MonadError e m => r -> Lambda m r
+lambda0 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
+           r -> Lambda m r
 lambda0 f = monoLambda $ mono f
 
 -- Helper for producing lambdas of kind (Type -> Type)
-lambda1 :: forall e m r. FromKindError e => MonadError e m => (r -> r) -> Lambda m r
+lambda1 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
+           (r -> r) -> Lambda m r
 lambda1 f = monoLambda \a -> mono (f a)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type)
-lambda2 :: forall e m r. FromKindError e => MonadError e m => (r -> r -> r) -> Lambda m r
+lambda2 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
+           (r -> r -> r) -> Lambda m r
 lambda2 f = monoLambda \a b -> mono (f a b)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type)
-lambda3 :: forall e m r. FromKindError e => MonadError e m => (r -> r -> r -> r) -> Lambda m r
+lambda3 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
+           (r -> r -> r -> r) -> Lambda m r
 lambda3 f = monoLambda \a b c -> mono (f a b c)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type)
-lambda4 :: forall e m r. FromKindError e => MonadError e m => (r -> r -> r -> r -> r) -> Lambda m r
+lambda4 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
+           (r -> r -> r -> r -> r) -> Lambda m r
 lambda4 f = monoLambda \a b c d -> mono (f a b c d)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> Type)
-lambda5 :: forall e m r. FromKindError e => MonadError e m => (r -> r -> r -> r -> r -> r) -> Lambda m r
+lambda5 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
+           (r -> r -> r -> r -> r -> r) -> Lambda m r
 lambda5 f = monoLambda \a b c d e -> mono (f a b c d e)
 
 -- Helper for producing lambdas which take arbitrary numbers of
@@ -79,12 +85,12 @@ class MonoLambda x r | x -> r where
 
 instance MonoLambda (Mono r) r where
     monoLambda = Ground <<< runMono
-    monoKind _ = Ty
+    monoKind _ = Ty GType
 
-instance MonoLambda x r => MonoLambda (r -> x) r where
+instance (GroundKindInferrable r, MonoLambda x r) => MonoLambda (r -> x) r where
     monoLambda f = Function {
-                     domain: Ty,
+                     domain: Ty GType,
                      codomain: monoKind (Proxy :: Proxy x),
-                     body: \a -> (monoLambda <<< f) <$> expectGround a
+                     body: \a -> (monoLambda <<< f) <$> expectGround GType a
                    }
-    monoKind _ = Ty `KArrow` monoKind (Proxy :: Proxy x)
+    monoKind _ = Ty GType `KArrow` monoKind (Proxy :: Proxy x)

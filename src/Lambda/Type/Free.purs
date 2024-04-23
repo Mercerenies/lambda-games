@@ -20,8 +20,9 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
+import Lambda.Type.Kind (GroundKind(..))
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
-import Lambda.Type.Error (TypeError(..))
+import Lambda.Type.Error (TypeError(..), class FromKindError)
 import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
 import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin(..))
 import Lambda.Type.LambdaContext.FreeTheoremEnv (FreeTheoremEnv, withBinding, lookupBinding, lookupBuiltin,
@@ -44,6 +45,10 @@ import Prelude
 
 appSection :: Term -> Term
 appSection x = OperatorSectionLeft "$" x
+
+expectGroundRel :: forall e m. FromKindError e => MonadError e m =>
+                   Lambda m Relation -> m Relation
+expectGroundRel = expectGround GType
 
 -- Lift a closed type into a relation.
 relationify :: forall m. MonadError TypeError m =>
@@ -69,8 +74,8 @@ relationify (TApp ff aa) = do
 relationify (TArrow a b) = do
   namer <- askVariableNamer
   withFreshName2 (suggestedVariableName namer a) $ \a1 a2 -> do
-    ra <- relationify a >>= expectGround
-    rb <- relationify b >>= expectGround
+    ra <- relationify a >>= expectGroundRel
+    rb <- relationify b >>= expectGroundRel
     aLeft <- doBoundSubstitutionsLeft a
     aRight <- doBoundSubstitutionsRight a
     pure $ Ground $ rForall a1 aLeft $ rForall a2 aRight $
@@ -82,7 +87,7 @@ relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
       let rel = mapTerms (App (Var f)) identity identityRelation
-      innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGround
+      innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGroundRel
       pure $ Ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
@@ -100,7 +105,7 @@ describeFreeTheoremGeneral (FreeTheoremOptions opts) t =
         fullDescription = do
           namer <- askVariableNamer
           withFreshName (suggestedVariableName namer t) $ \a -> do
-            r <- relationify t >>= expectGround
+            r <- relationify t >>= expectGroundRel
             let description = opts.simplifier (runRelation r (Var a) (Var a))
             pure $ opts.finalizer a t description
         readerContext :: FreeTheoremEnv (LambdaContextT (Either TypeError))

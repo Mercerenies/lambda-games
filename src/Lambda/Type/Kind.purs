@@ -14,25 +14,46 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Kind(
-                   TKind(..)
+                   TKind(..),
+                   GroundKind(..),
+                   toKind, toGroundKind
                   ) where
 
-import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
+import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
+import Data.Maybe (Maybe(..))
 
-data TKind = Ty | KArrow TKind TKind
+data TKind = Ty GroundKind -- Ground kind (Type, Constraint, etc)
+           | KArrow TKind TKind -- Arrow kind (a -> b)
+
+data GroundKind = GType | GConstraint
 
 derive instance Eq TKind
 derive instance Generic TKind _
+derive instance Eq GroundKind
+derive instance Generic GroundKind _
 
 instance Show TKind where
     show k = genericShow k
 
 instance PrettyShow TKind where
     prettyShow = prettyShowPrec defaultPrecedence
+
+instance Show GroundKind where
+    show k = genericShow k
+
+instance PrettyShow GroundKind where
+    prettyShow x = prettyShow (Ty x)
+
+toKind :: GroundKind -> TKind
+toKind = Ty
+
+toGroundKind :: TKind -> Maybe GroundKind
+toGroundKind (Ty g) = Just g
+toGroundKind _ = Nothing
 
 defaultPrecedence :: Int
 defaultPrecedence = 0
@@ -44,7 +65,8 @@ arrowLeftPrecedence :: Int
 arrowLeftPrecedence = 2
 
 prettyShowPrec :: Int -> TKind -> String
-prettyShowPrec _ Ty = "Type"
+prettyShowPrec _ (Ty GType) = "Type"
+prettyShowPrec _ (Ty GConstraint) = "Constraint"
 prettyShowPrec n (KArrow left right) =
     let left' = prettyShowPrec arrowLeftPrecedence left
         right' = prettyShowPrec arrowRightPrecedence right in
