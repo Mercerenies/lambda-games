@@ -24,7 +24,6 @@ import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.Kind (TKind(..), GroundKind(..))
 
 import Prelude
-import Data.Identity (Identity(..))
 import Safe.Coerce (coerce)
 import Type.Proxy (Proxy(..))
 import Control.Monad.Error.Class (class MonadError)
@@ -63,13 +62,7 @@ lambda5 f = monoLambda \a b c d e -> mono (f a b c d e)
 -- arguments, all of which are of kind Type. e.g. (Type -> Type),
 -- (Type -> Type -> Type), etc.
 
-newtype Mono r = Mono (Identity r) -- Identity lets us derive Monad and its superclasses, as opposed to just r.
-
-derive newtype instance Functor Mono
-derive newtype instance Apply Mono
-derive newtype instance Applicative Mono
-derive newtype instance Bind Mono
-derive newtype instance Monad Mono
+newtype Mono r = Mono r
 
 runMono :: forall r. Mono r -> r
 runMono = coerce
