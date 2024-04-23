@@ -22,6 +22,7 @@ import Data.Maybe (Maybe(..))
 import Data.Map (Map)
 import Data.Map (lookup) as Map
 import Control.MonadPlus (class MonadPlus, class Alternative, class Alt, class Plus, alt)
+import Test.QuickCheck.Arbitrary (class Arbitrary, class Coarbitrary)
 
 -- Basic data structure isomorphic to (s -> Maybe a), but with lifted
 -- MonadPlus, etc. operators.
@@ -65,3 +66,6 @@ singleton k v = LookupMap \k' -> if k == k' then Just v else Nothing
 
 fromMap :: forall s a. Ord s => Map s a -> LookupMap s a
 fromMap m = LookupMap \k -> Map.lookup k m
+
+derive newtype instance (Coarbitrary s, Arbitrary a) => Arbitrary (LookupMap s a)
+derive newtype instance (Arbitrary s, Coarbitrary a) => Coarbitrary (LookupMap s a)
