@@ -19,6 +19,7 @@ import Test.Lambda.Util.InfiniteList (infiniteListSpecs)
 import Test.Lambda.LookupMap (lookupMapSpecs)
 import Test.Lambda.Type (lambdaTypeSpecs)
 import Test.Lambda.Util (utilSpecs)
+import Test.Lambda.MathShow (mathShowSpecs)
 
 import Effect (Effect)
 import Effect.Aff (launchAff_)
@@ -36,3 +37,4 @@ baseSpecs = do
   lookupMapSpecs
   lambdaTypeSpecs
   utilSpecs
+  mathShowSpecs
