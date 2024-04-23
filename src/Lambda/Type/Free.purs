@@ -14,8 +14,8 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Free(
-                        LambdaContextT(..), unLambdaContextT, runLambdaContextT,
-                        relationify, relationifyWithBindings,
+                        LambdaContextT(..), ReaderContext(..), unLambdaContextT, runLambdaContextT,
+                        relationify,
                         FreeTheoremOptions(..), describeFreeTheoremGeneral,
                         describeFreeTheorem, describeFreeTheoremLatex
                        ) where
@@ -40,13 +40,18 @@ import Data.Either (Either)
 import Data.Newtype (class Newtype)
 import Control.Monad.Error.Class (class MonadThrow, class MonadError, throwError)
 import Control.Monad.Reader.Trans (ReaderT, runReaderT)
-import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, asks)
+import Control.Monad.Reader.Class (class MonadAsk, class MonadReader, asks, local)
 import Prelude
 
 -- The type that Lambda functions (at the type level) must run in (for
 -- underlying monad m).
 newtype LambdaContextT m a =
-    LambdaContextT (ReaderT (BuiltinsMap (LambdaContextT m)) (NamesT String m) a)
+    LambdaContextT (ReaderT (ReaderContext m) (NamesT String m) a)
+
+newtype ReaderContext m = ReaderContext {
+      builtinsMap :: BuiltinsMap (LambdaContextT m),
+      quantifiedBindings :: List (Tuple String Relation)
+    }
 
 derive instance Newtype (LambdaContextT m a) _
 derive newtype instance Functor m => Functor (LambdaContextT m)
@@ -56,57 +61,60 @@ derive newtype instance Bind m => Bind (LambdaContextT m)
 derive newtype instance Monad m => Monad (LambdaContextT m)
 derive newtype instance MonadThrow e m => MonadThrow e (LambdaContextT m)
 derive newtype instance MonadError e m => MonadError e (LambdaContextT m)
-derive newtype instance Monad m => MonadAsk (BuiltinsMap (LambdaContextT m)) (LambdaContextT m)
-derive newtype instance Monad m => MonadReader (BuiltinsMap (LambdaContextT m)) (LambdaContextT m)
+derive newtype instance Monad m => MonadAsk (ReaderContext m) (LambdaContextT m)
+derive newtype instance Monad m => MonadReader (ReaderContext m) (LambdaContextT m)
 derive newtype instance Monad m => MonadNames String (LambdaContextT m)
 
-unLambdaContextT :: forall m a. LambdaContextT m a -> ReaderT (BuiltinsMap (LambdaContextT m)) (NamesT String m) a
+unLambdaContextT :: forall m a. LambdaContextT m a -> ReaderT (ReaderContext m) (NamesT String m) a
 unLambdaContextT (LambdaContextT x) = x
 
 runLambdaContextT :: forall m a. Monad m =>
-                     LambdaContextT m a -> BuiltinsMap (LambdaContextT m) -> List String -> m a
+                     LambdaContextT m a -> ReaderContext m -> List String -> m a
 runLambdaContextT (LambdaContextT x) r reservedNames = runNamesTWith reservedNames (runReaderT x r)
-
--- Lift a closed type into a relation.
-relationify :: forall m. MonadError TypeError m => TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
-relationify = relationifyWithBindings Nil
 
 appSection :: Term -> Term
 appSection x = OperatorSectionLeft "$" x
 
-relationifyWithBindings :: forall m. MonadError TypeError m =>
-                           List (Tuple String Relation) -> TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
-relationifyWithBindings bindings (TVar x)
-    | Just rel <- Fold.lookup x bindings = pure (Ground rel)
-    | otherwise = throwError $ UnboundVariable x
-relationifyWithBindings _ (TGround x) = do
-    lam <- asks $ BuiltinsMap.lookup x
+addBinding :: forall m. String -> Relation -> ReaderContext m -> ReaderContext m
+addBinding x t (ReaderContext ctx) =
+    ReaderContext $ ctx { quantifiedBindings = Tuple x t : ctx.quantifiedBindings }
+
+-- Lift a closed type into a relation.
+relationify :: forall m. MonadError TypeError m =>
+               TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
+relationify (TVar x) = do
+  bindings <- asks \(ReaderContext r) -> r.quantifiedBindings
+  case Fold.lookup x bindings of
+    Just rel -> pure (Ground rel)
+    Nothing -> throwError $ UnboundVariable x
+relationify (TGround x) = do
+    lam <- asks $ \(ReaderContext r) -> BuiltinsMap.lookup x r.builtinsMap
     case lam of
       Nothing -> throwError $ UnboundGroundTerm x
       Just (Builtin { relation }) -> pure relation
-relationifyWithBindings bindings (TApp ff aa) = do
-  f <- relationifyWithBindings bindings ff
-  a <- relationifyWithBindings bindings aa
+relationify (TApp ff aa) = do
+  f <- relationify ff
+  a <- relationify aa
   case f of
     Ground _ -> throwError $ ExpectedTypeFunction ff
     Function { domain, codomain: _, body: f' } -> do
       assertKind domain (getKind a)
       f' a
-relationifyWithBindings bindings (TArrow a b) = do
-  namer <- asks variableNamer
+relationify (TArrow a b) = do
+  namer <- asks (\(ReaderContext r) -> variableNamer r.builtinsMap)
   withFreshName2 (suggestedVariableName namer a) $ \a1 a2 -> do
-    ra <- relationifyWithBindings bindings a >>= expectGround
-    rb <- relationifyWithBindings bindings b >>= expectGround
+    ra <- relationify a >>= expectGround
+    rb <- relationify b >>= expectGround
     pure $ Ground $ rForall a1 a $ rForall a2 a $
                       runRelation ra (Var a1) (Var a2) `rImplies`
                         mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
---relationifyWithBindings _ (TContextArrow _ _) =
+--relationify (TContextArrow _ _) =
 --    unsafeThrow "Not supported yet"
-relationifyWithBindings bindings (TForall x body) = do
+relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
       let rel = mapTerms (App (Var f)) identity identityRelation
-      innerRelation <- relationifyWithBindings (Tuple x rel : bindings) body >>= expectGround
+      innerRelation <- (local (addBinding x rel) $ relationify body) >>= expectGround
       pure $ Ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
@@ -119,14 +127,19 @@ newtype FreeTheoremOptions a = FreeTheoremOptions {
 
 describeFreeTheoremGeneral :: forall a. FreeTheoremOptions a -> TType -> Either TypeError a
 describeFreeTheoremGeneral (FreeTheoremOptions opts) t =
-    runLambdaContextT fullDescription opts.builtinsMap opts.reservedNames
+    runLambdaContextT fullDescription readerContext opts.reservedNames
   where fullDescription :: LambdaContextT (Either TypeError) a
         fullDescription = do
-          namer <- asks variableNamer
+          namer <- asks (\(ReaderContext r) -> variableNamer r.builtinsMap)
           withFreshName (suggestedVariableName namer t) $ \a -> do
             r <- relationify t >>= expectGround
             let description = opts.simplifier (runRelation r (Var a) (Var a))
             pure $ opts.finalizer a t description
+        readerContext :: ReaderContext (Either TypeError)
+        readerContext = ReaderContext {
+                          builtinsMap: opts.builtinsMap,
+                          quantifiedBindings: Nil
+                        }
 
 describeFreeTheorem :: (Predicate -> Predicate) ->
                        BuiltinsMap (LambdaContextT (Either TypeError)) ->
