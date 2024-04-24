@@ -19,9 +19,10 @@ module Lambda.Type.Functions.Factory(
 
 -- Helpers for producing Lambdas of various function types.
 
-import Lambda.Type.Functions (Lambda(..), expectGround, class GroundKindInferrable)
+import Lambda.Type.Functions (Lambda(..), class GroundKindInferrable)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.Kind (TKind(..), GroundKind(..))
+import Lambda.Type.Typeclass (WithContexts, expectGroundTy)
 
 import Prelude
 import Safe.Coerce (coerce)
@@ -30,33 +31,33 @@ import Control.Monad.Error.Class (class MonadError)
 
 -- Helper for producing lambdas of kind Type
 lambda0 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           r -> Lambda m r
-lambda0 f = monoLambda (expectGround GType) $ mono f
+           WithContexts r -> Lambda m (WithContexts r)
+lambda0 f = monoLambda expectGroundTy $ mono f
 
 -- Helper for producing lambdas of kind (Type -> Type)
 lambda1 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r) -> Lambda m r
-lambda1 f = monoLambda (expectGround GType) \a -> mono (f a)
+           (r -> WithContexts r) -> Lambda m (WithContexts r)
+lambda1 f = monoLambda expectGroundTy \a -> mono (f a)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type)
 lambda2 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> r) -> Lambda m r
-lambda2 f = monoLambda (expectGround GType) \a b -> mono (f a b)
+           (r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+lambda2 f = monoLambda expectGroundTy \a b -> mono (f a b)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type)
 lambda3 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> r -> r) -> Lambda m r
-lambda3 f = monoLambda (expectGround GType) \a b c -> mono (f a b c)
+           (r -> r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+lambda3 f = monoLambda expectGroundTy \a b c -> mono (f a b c)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type)
 lambda4 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> r -> r -> r) -> Lambda m r
-lambda4 f = monoLambda (expectGround GType) \a b c d -> mono (f a b c d)
+           (r -> r -> r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+lambda4 f = monoLambda expectGroundTy \a b c d -> mono (f a b c d)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> Type)
 lambda5 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> r -> r -> r -> r) -> Lambda m r
-lambda5 f = monoLambda (expectGround GType) \a b c d e -> mono (f a b c d e)
+           (r -> r -> r -> r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+lambda5 f = monoLambda expectGroundTy \a b c d e -> mono (f a b c d e)
 
 -- Helper for producing lambdas which take arbitrary numbers of
 -- arguments, all of which are of kind Type. e.g. (Type -> Type),

@@ -27,6 +27,7 @@ import Lambda.Type.Functions (Lambda(..))
 import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
+import Lambda.Type.Typeclass (WithContexts(..))
 import Lambda.Term (Term(..), Pattern(..), allVariables)
 import Lambda.Util (toList)
 import Lambda.Util.InfiniteList (InfiniteList)
@@ -67,12 +68,13 @@ liftToLambda f = Fn newVar (f (Var newVar))
 
 basicBuiltin :: forall m. InfiniteList String -> Builtin m
 basicBuiltin nameStream = Builtin {
-                            relation: Ground identityRelation,
+                            relation: Ground (NonContext identityRelation),
                             nameStream
                           }
 
-listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
-listType = lambda1 \r -> bimap liftToFmap liftToFmap r
+listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+            Lambda m (WithContexts Relation)
+listType = lambda1 \r -> NonContext $ bimap liftToFmap liftToFmap r
     where liftToFmap :: TermHole -> TermHole
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
@@ -85,8 +87,9 @@ listBuiltin = Builtin {
                 nameStream: listNames
               }
 
-tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
-tuple2Type = lambda2 \ra rb -> zipRelationsWith liftToTuple2 liftToTuple2 ra rb
+tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+              Lambda m (WithContexts Relation)
+tuple2Type = lambda2 \ra rb -> NonContext $ zipRelationsWith liftToTuple2 liftToTuple2 ra rb
     where liftToTuple2 :: TermHole -> TermHole -> TermHole
           liftToTuple2 a b = App (OperatorApp (liftToLambda a) "***" (liftToLambda b))
 
@@ -116,8 +119,9 @@ tupleMap fs =
 liftToTuple :: Array TermHole -> TermHole
 liftToTuple xs = App (tupleMap $ map liftToLambda xs)
 
-tuple3Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
-tuple3Type = lambda3 \ra rb rc -> zipRelationsWith3 go go ra rb rc
+tuple3Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+              Lambda m (WithContexts Relation)
+tuple3Type = lambda3 \ra rb rc -> NonContext $ zipRelationsWith3 go go ra rb rc
     where go a b c = liftToTuple [a, b, c]
 
 tuple3Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
@@ -126,8 +130,9 @@ tuple3Builtin = Builtin {
                   nameStream: freshStrings "trip"
                 }
 
-tuple4Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
-tuple4Type = lambda4 \ra rb rc rd -> zipRelationsWith4 go go ra rb rc rd
+tuple4Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+              Lambda m (WithContexts Relation)
+tuple4Type = lambda4 \ra rb rc rd -> NonContext $ zipRelationsWith4 go go ra rb rc rd
     where go a b c d = liftToTuple [a, b, c, d]
 
 tuple4Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
@@ -136,8 +141,9 @@ tuple4Builtin = Builtin {
                   nameStream: freshStrings "tup"
                 }
 
-tuple5Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
-tuple5Type = lambda5 \ra rb rc rd re -> zipRelationsWith5 go go ra rb rc rd re
+tuple5Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+              Lambda m (WithContexts Relation)
+tuple5Type = lambda5 \ra rb rc rd re -> NonContext $ zipRelationsWith5 go go ra rb rc rd re
     where go a b c d e = liftToTuple [a, b, c, d, e]
 
 tuple5Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
@@ -146,8 +152,9 @@ tuple5Builtin = Builtin {
                   nameStream: freshStrings "tup"
                 }
 
-eitherType :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Lambda m Relation
-eitherType = lambda2 \ra rb -> zipRelationsWith liftToEither liftToEither ra rb
+eitherType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+              Lambda m (WithContexts Relation)
+eitherType = lambda2 \ra rb -> NonContext $ zipRelationsWith liftToEither liftToEither ra rb
     where liftToEither :: TermHole -> TermHole -> TermHole
           liftToEither a b = App (OperatorApp (liftToLambda a) "+++" (liftToLambda b))
 

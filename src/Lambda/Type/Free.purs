@@ -20,6 +20,7 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
+import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody, expectGroundTy)
 import Lambda.Type.Kind (GroundKind(..))
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..), class FromKindError)
@@ -41,22 +42,28 @@ import Data.Tuple (Tuple(..))
 import Data.List (List)
 import Data.Either (Either)
 import Control.Monad.Error.Class (class MonadError, throwError)
+import Effect.Exception.Unsafe (unsafeThrow)
 import Prelude
 
 appSection :: Term -> Term
 appSection x = OperatorSectionLeft "$" x
 
-expectGroundRel :: forall e m. FromKindError e => MonadError e m =>
-                   Lambda m Relation -> m Relation
-expectGroundRel = expectGround GType
+expectGroundConstraint :: forall e m. FromKindError e => MonadError e m =>
+                          Lambda m (WithContexts Relation) -> m TypeclassBody
+expectGroundConstraint = map unwrapConstraint <<< expectGround GConstraint
+    where unwrapConstraint (Context typeclass) = typeclass
+          unwrapConstraint (NonContext _) = unsafeThrow "expectGroundConstraint: NonContext" -- Safety: We just checked the kind, and no values of concrete type Relation will ever have ground kind equal to GConstraint
+
+ground :: forall m. Relation -> Lambda m (WithContexts Relation)
+ground = Ground <<< NonContext
 
 -- Lift a closed type into a relation.
 relationify :: forall m. MonadError TypeError m =>
-               TType -> LambdaContextT m (Lambda (LambdaContextT m) Relation)
+               TType -> LambdaContextT m (Lambda (LambdaContextT m) (WithContexts Relation))
 relationify (TVar x) = do
   rel <- lookupBinding x
   case rel of
-    Just relation -> pure (Ground relation)
+    Just relation -> pure (ground relation)
     Nothing -> throwError $ UnboundVariable x
 relationify (TGround x) = do
     lam <- lookupBuiltin x
@@ -74,11 +81,11 @@ relationify (TApp ff aa) = do
 relationify (TArrow a b) = do
   namer <- askVariableNamer
   withFreshName2 (suggestedVariableName namer a) $ \a1 a2 -> do
-    ra <- relationify a >>= expectGroundRel
-    rb <- relationify b >>= expectGroundRel
+    ra <- relationify a >>= expectGroundTy
+    rb <- relationify b >>= expectGroundTy
     aLeft <- doBoundSubstitutionsLeft a
     aRight <- doBoundSubstitutionsRight a
-    pure $ Ground $ rForall a1 aLeft $ rForall a2 aRight $
+    pure $ ground $ rForall a1 aLeft $ rForall a2 aRight $
                       runRelation ra (Var a1) (Var a2) `rImplies`
                         mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
 --relationify (TContextArrow _ _) =
@@ -87,8 +94,8 @@ relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
       let rel = mapTerms (App (Var f)) identity identityRelation
-      innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGroundRel
-      pure $ Ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
+      innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGroundTy
+      pure $ ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
 newtype FreeTheoremOptions a = FreeTheoremOptions {
@@ -105,7 +112,7 @@ describeFreeTheoremGeneral (FreeTheoremOptions opts) t =
         fullDescription = do
           namer <- askVariableNamer
           withFreshName (suggestedVariableName namer t) $ \a -> do
-            r <- relationify t >>= expectGroundRel
+            r <- relationify t >>= expectGroundTy
             let description = opts.simplifier (runRelation r (Var a) (Var a))
             pure $ opts.finalizer a t description
         readerContext :: FreeTheoremEnv (LambdaContextT (Either TypeError))
