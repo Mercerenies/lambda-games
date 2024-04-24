@@ -16,7 +16,7 @@
 module Lambda.Type.Builtins(
                             reservedNames,
                             basicBuiltin, listBuiltin, tuple2Builtin, tuple3Builtin,
-                            tuple4Builtin, tuple5Builtin, eitherBuiltin,
+                            tuple4Builtin, tuple5Builtin, eitherBuiltin, semigroupBuiltin,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
@@ -24,11 +24,12 @@ import Lambda.Type (TType(..))
 import Lambda.Type.Relation (Relation, identityRelation,
                              zipRelationsWith, zipRelationsWith3, zipRelationsWith4, zipRelationsWith5,
                              TermHole)
-import Lambda.Type.Functions (TaggedLambda, TaggedLambdaF(..), Lambda, LambdaF(..))
+import Lambda.Type.Functions (TaggedLambda, TaggedLambdaF(..), LambdaF(..))
 import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5, lambdaCtx1)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
-import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..))
+import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody)
+import Lambda.Type.Typeclass (singleton) as Typeclass
 import Lambda.Term (Term(..), Pattern(..), allVariables)
 import Lambda.Util (toList)
 import Lambda.Util.InfiniteList (InfiniteList)
@@ -171,9 +172,18 @@ eitherBuiltin = Builtin {
 unusedNameStream :: InfiniteList String
 unusedNameStream = freshStrings "UNUSED_VARIABLE"
 
---semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
---                 TaggedLambda m (WithContexts Relation)
---semigroupType = lambdaCtx1 \ra -> Context $ 
+semigroupTypeclass :: TType -> TypeclassBody
+semigroupTypeclass a = Typeclass.singleton "mappend" (a `TArrow` (a `TArrow` a))
+
+semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+                 TaggedLambda TType m (WithContexts Relation)
+semigroupType = lambdaCtx1 (TGround "Semigroup") \ta -> Context $ semigroupTypeclass ta
+
+semigroupBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+semigroupBuiltin = Builtin {
+                     relation: semigroupType,
+                     nameStream: unusedNameStream
+                   }
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
@@ -189,7 +199,8 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Tuple3" tuple3Builtin,
                     Tuple "Tuple4" tuple4Builtin,
                     Tuple "Tuple5" tuple5Builtin,
-                    Tuple "Either" eitherBuiltin
+                    Tuple "Either" eitherBuiltin,
+                    Tuple "Semigroup" semigroupBuiltin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
