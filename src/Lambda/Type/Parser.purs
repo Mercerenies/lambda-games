@@ -28,6 +28,7 @@ import Control.Alt ((<|>))
 import Control.Lazy (defer)
 import Control.Monad.Rec.Class (class MonadRec)
 import Data.List (List, (:), head)
+import Data.List (singleton) as List
 import Data.Array (notElem)
 import Data.Foldable (foldr, foldl, length)
 import Data.Semigroup.Foldable (foldl1)
@@ -70,11 +71,8 @@ listExpression :: forall m. Monad m => ParserT String m TType
 listExpression = TApp (TGround "List") <$>
                  between (char '[' *> skipSpaces) (skipSpaces <* char ']') (defer \_ -> expression)
 
--- Unit tuples, individual parenthesized expressions, and proper
--- tuples (since they all parse the same way)
-tupleLikeExpression :: forall m. Monad m => ParserT String m TType
-tupleLikeExpression = do
-    xs <- sepBy (defer \_ -> expression) (try $ skipSpaces *> char ',' <* skipSpaces)
+tupleArgsToType :: forall m. Monad m => List TType -> ParserT String m TType
+tupleArgsToType xs =
     case length xs of
       0 -> pure $ foldTupleApp "Tuple0" xs
       1 -> pure $ unsafeFromJust (head xs) -- safety: head must exist since length xs == 1
@@ -85,6 +83,13 @@ tupleLikeExpression = do
       _ -> fail "Sorry, only tuples of length up to 5 are currently supported"
   where foldTupleApp :: String -> List TType -> TType
         foldTupleApp s = foldl TApp (TGround s)
+
+-- Unit tuples, individual parenthesized expressions, and proper
+-- tuples (since they all parse the same way)
+tupleLikeExpression :: forall m. Monad m => ParserT String m TType
+tupleLikeExpression = do
+    xs <- sepBy (defer \_ -> expression) (try $ skipSpaces *> char ',' <* skipSpaces)
+    tupleArgsToType xs
 
 commaSectionExpression :: forall m. Monad m => ParserT String m TType
 commaSectionExpression = do
@@ -111,16 +116,36 @@ basicExpression = var <|>
 appExpression :: forall m. Monad m => ParserT String m TType
 appExpression = foldl1 TApp <$> sepEndBy1 basicExpression skipSpaces
 
+-- Regular arrows (->) parse their left-hand sides as tuples if there
+-- are parens and commas. We could theoretically just let
+-- parenthesizedExpression handle this case, but doing it here as well
+-- lets us avoid having to have a massive lookahead on the parser to
+-- identify the arrow type.
+--
+-- Context arrows (=>) unroll their left-hand side, so that (Eq a,
+-- Monoid a) => a becomes Eq a => Monoid a => a. That is, we can still
+-- write the syntax the Haskell way, but we represent contexts the
+-- Purescript way, curried.
+arrowType :: forall m. Monad m => ParserT String m (List TType -> TType -> ParserT String m TType)
+arrowType = regularArrowType <$ (string "->" <|> string "→") <|>
+            contextArrowType <$ (string "=>" <|> string "⇒")
+    where regularArrowType xs rhs = (_ `TArrow` rhs) <$> tupleArgsToType xs
+          contextArrowType xs rhs = pure $ foldr TContextArrow rhs xs
+
+arrowLeftHandSide :: forall m. Monad m => ParserT String m (List TType)
+arrowLeftHandSide = parenthesized <|> basic
+    where parenthesized = between (char '(' *> skipSpaces) (skipSpaces <* char ')') $
+                            sepBy (defer \_ -> expression) (try $ skipSpaces *> char ',' <* skipSpaces)
+          basic = List.singleton <$> basicExpression
+
 arrowExpression :: forall m. Monad m => ParserT String m TType
-arrowExpression = ado
-      lhs <- appExpression
+arrowExpression = do
+      lhs <- arrowLeftHandSide
       skipSpaces
       ctor <- arrowType
       skipSpaces
       rhs <- defer \_ -> expression
-      in ctor lhs rhs
-    where arrowType = TArrow <$ (string "->" <|> string "→") {- <|>
-                      TContextArrow <$ (string "=>" <|> string "⇒") -}
+      ctor lhs rhs
 
 expression :: forall m. Monad m => ParserT String m TType
 expression = try arrowExpression <|> appExpression

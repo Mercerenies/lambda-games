@@ -77,5 +77,5 @@ unsafeFromJust = maybe' (\_ -> unsafeThrow "unsafeFromJust: Nothing") identity
 first :: forall a a' b. (a -> a') -> Tuple a b -> Tuple a' b
 first f (Tuple a b) = Tuple (f a) b
 
-second :: forall a b b' c. (b -> b') -> Tuple a b -> Tuple a b'
+second :: forall a b b'. (b -> b') -> Tuple a b -> Tuple a b'
 second f (Tuple a b) = Tuple a (f b)
