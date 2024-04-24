@@ -1,12 +1,15 @@
 
 module Lambda.Type.Typeclass(
                               TypeclassBody(..), TypeclassFunction(..),
-                              WithContexts(..), expectGroundTy, expectGroundConstraint
+                              WithContexts(..),
+                              expectGroundTy, expectGroundConstraint,
+                              expectGroundTy', expectGroundConstraint'
                              ) where
 
 import Lambda.Type (TType)
 import Lambda.Type.Kind (GroundKind(..))
-import Lambda.Type.Functions (Lambda, class GroundKindInferrable, class NeverConstraint, getGroundKind, expectGround)
+import Lambda.Type.Functions (LambdaF, TaggedLambdaF(..),
+                              class GroundKindInferrable, class NeverConstraint, getGroundKind, expectGround)
 import Lambda.Type.Error (class FromKindError)
 
 import Prelude
@@ -41,8 +44,8 @@ instance GroundKindInferrable r => GroundKindInferrable (WithContexts r) where
     getGroundKind (NonContext r) = getGroundKind r
     getGroundKind (Context _) = GConstraint
 
-expectGroundTy :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-                  Lambda m (WithContexts r) -> m r
+expectGroundTy :: forall e m r a. FromKindError e => MonadError e m => GroundKindInferrable r =>
+                  LambdaF m (WithContexts r) a -> m r
 expectGroundTy lam = unwrapGround <$> expectGround GType lam
     where -- Safety: This is safe, because we know (per the typeclass
           -- instance above that is owned by this module) that GType
@@ -50,8 +53,8 @@ expectGroundTy lam = unwrapGround <$> expectGround GType lam
           unwrapGround (NonContext r) = r
           unwrapGround (Context _) = unsafeThrow "expectGroundTy: unexpected context"
 
-expectGroundConstraint :: forall e m r. FromKindError e => MonadError e m => NeverConstraint r =>
-                          Lambda m (WithContexts r) -> m TypeclassBody
+expectGroundConstraint :: forall e m r a. FromKindError e => MonadError e m => NeverConstraint r =>
+                          LambdaF m (WithContexts r) a -> m TypeclassBody
 expectGroundConstraint = map unwrapConstraint <<< expectGround GConstraint
     where -- Safety: This is safe, because a type which lawfully
           -- implements NeverConstraint will never give GConstraint.
@@ -62,3 +65,14 @@ expectGroundConstraint = map unwrapConstraint <<< expectGround GConstraint
           -- the wrong layer, for instance.
           unwrapConstraint (Context typeclass) = typeclass
           unwrapConstraint (NonContext _) = unsafeThrow "expectGroundConstraint: NonContext"
+
+-- Variants of the assertions that work on TaggedLambdas instead. Does
+-- not use the tag.
+
+expectGroundTy' :: forall e t m r a. FromKindError e => MonadError e m => GroundKindInferrable r =>
+                   TaggedLambdaF t m (WithContexts r) a -> m r
+expectGroundTy' (TaggedLambdaF _ lam) = expectGroundTy lam
+
+expectGroundConstraint' :: forall e t m r a. FromKindError e => MonadError e m => NeverConstraint r =>
+                           TaggedLambdaF t m (WithContexts r) a -> m TypeclassBody
+expectGroundConstraint' (TaggedLambdaF _ lam) = expectGroundConstraint lam

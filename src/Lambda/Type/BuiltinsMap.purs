@@ -21,8 +21,9 @@ module Lambda.Type.BuiltinsMap(
 
 import Lambda.LookupMap (LookupMap)
 import Lambda.LookupMap (lookup) as LookupMap
+import Lambda.Type (TType)
 import Lambda.Type.Relation (Relation)
-import Lambda.Type.Functions (Lambda)
+import Lambda.Type.Functions (TaggedLambda)
 import Lambda.Type.Typeclass (WithContexts)
 import Lambda.Util.InfiniteList (InfiniteList)
 import Lambda.Monad.Names (freshStrings)
@@ -38,7 +39,7 @@ newtype BuiltinsMap m = BuiltinsMap (LookupMap String (Builtin m))
 
 newtype Builtin :: (Type -> Type) -> Type
 newtype Builtin m = Builtin {
-      relation :: Lambda m (WithContexts Relation),
+      relation :: TaggedLambda TType m (WithContexts Relation),
       nameStream :: InfiniteList String
     }
 

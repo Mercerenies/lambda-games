@@ -20,10 +20,11 @@ module Lambda.Type.Builtins(
                             namedBuiltinsMap, allBuiltins
                            ) where
 
+import Lambda.Type (TType(..))
 import Lambda.Type.Relation (Relation, identityRelation,
                              zipRelationsWith, zipRelationsWith3, zipRelationsWith4, zipRelationsWith5,
                              TermHole)
-import Lambda.Type.Functions (Lambda, LambdaF(..))
+import Lambda.Type.Functions (TaggedLambda, TaggedLambdaF(..), Lambda, LambdaF(..))
 import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
@@ -66,15 +67,15 @@ liftToLambda f = Fn newVar (f (Var newVar))
     where allVars = allVariables (f (Var "_")) -- Just fill in a placeholder variable
           newVar = InfiniteList.find (\var -> not (var `Set.member` allVars)) temporaryVarNames
 
-basicBuiltin :: forall m. InfiniteList String -> Builtin m
-basicBuiltin nameStream = Builtin {
-                            relation: Ground (NonContext identityRelation),
-                            nameStream
-                          }
+basicBuiltin :: forall m. TType -> InfiniteList String -> Builtin m
+basicBuiltin ttype nameStream = Builtin {
+                                  relation: TaggedLambdaF ttype $ Ground (NonContext identityRelation),
+                                  nameStream
+                                }
 
 listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-            Lambda m (WithContexts Relation)
-listType = lambda1 \r -> NonContext $ bimap liftToFmap liftToFmap r
+            TaggedLambda TType m (WithContexts Relation)
+listType = lambda1 (TGround "List") \r -> NonContext $ bimap liftToFmap liftToFmap r
     where liftToFmap :: TermHole -> TermHole
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
@@ -88,8 +89,8 @@ listBuiltin = Builtin {
               }
 
 tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
-tuple2Type = lambda2 \ra rb -> NonContext $ zipRelationsWith liftToTuple2 liftToTuple2 ra rb
+              TaggedLambda TType m (WithContexts Relation)
+tuple2Type = lambda2 (TGround "Tuple2") \ra rb -> NonContext $ zipRelationsWith liftToTuple2 liftToTuple2 ra rb
     where liftToTuple2 :: TermHole -> TermHole -> TermHole
           liftToTuple2 a b = App (OperatorApp (liftToLambda a) "***" (liftToLambda b))
 
@@ -120,8 +121,8 @@ liftToTuple :: Array TermHole -> TermHole
 liftToTuple xs = App (tupleMap $ map liftToLambda xs)
 
 tuple3Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
-tuple3Type = lambda3 \ra rb rc -> NonContext $ zipRelationsWith3 go go ra rb rc
+              TaggedLambda TType m (WithContexts Relation)
+tuple3Type = lambda3 (TGround "Tuple3") \ra rb rc -> NonContext $ zipRelationsWith3 go go ra rb rc
     where go a b c = liftToTuple [a, b, c]
 
 tuple3Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
@@ -131,8 +132,8 @@ tuple3Builtin = Builtin {
                 }
 
 tuple4Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
-tuple4Type = lambda4 \ra rb rc rd -> NonContext $ zipRelationsWith4 go go ra rb rc rd
+              TaggedLambda TType m (WithContexts Relation)
+tuple4Type = lambda4 (TGround "Tuple4") \ra rb rc rd -> NonContext $ zipRelationsWith4 go go ra rb rc rd
     where go a b c d = liftToTuple [a, b, c, d]
 
 tuple4Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
@@ -142,8 +143,8 @@ tuple4Builtin = Builtin {
                 }
 
 tuple5Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
-tuple5Type = lambda5 \ra rb rc rd re -> NonContext $ zipRelationsWith5 go go ra rb rc rd re
+              TaggedLambda TType m (WithContexts Relation)
+tuple5Type = lambda5 (TGround "Tuple5") \ra rb rc rd re -> NonContext $ zipRelationsWith5 go go ra rb rc rd re
     where go a b c d e = liftToTuple [a, b, c, d, e]
 
 tuple5Builtin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
@@ -153,8 +154,8 @@ tuple5Builtin = Builtin {
                 }
 
 eitherType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
-eitherType = lambda2 \ra rb -> NonContext $ zipRelationsWith liftToEither liftToEither ra rb
+              TaggedLambda TType m (WithContexts Relation)
+eitherType = lambda2 (TGround "Either") \ra rb -> NonContext $ zipRelationsWith liftToEither liftToEither ra rb
     where liftToEither :: TermHole -> TermHole -> TermHole
           liftToEither a b = App (OperatorApp (liftToLambda a) "+++" (liftToLambda b))
 
@@ -176,14 +177,14 @@ unusedNameStream = freshStrings "UNUSED_VARIABLE"
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
-                    Tuple "Int" $ basicBuiltin (freshStrings "n"),
-                    Tuple "Float" $ basicBuiltin (freshStrings "f"),
-                    Tuple "Double" $ basicBuiltin (freshStrings "d"),
-                    Tuple "String" $ basicBuiltin (freshStrings "s"),
-                    Tuple "Boolean" $ basicBuiltin (freshStrings "b"),
+                    Tuple "Int" $ basicBuiltin (TGround "Int") (freshStrings "n"),
+                    Tuple "Float" $ basicBuiltin (TGround "Float") (freshStrings "f"),
+                    Tuple "Double" $ basicBuiltin (TGround "Double") (freshStrings "d"),
+                    Tuple "String" $ basicBuiltin (TGround "String") (freshStrings "s"),
+                    Tuple "Boolean" $ basicBuiltin (TGround "Boolean") (freshStrings "b"),
                     Tuple "List" listBuiltin,
-                    Tuple "Tuple0" $ basicBuiltin (freshStrings "unit"),
-                    Tuple "Void" $ basicBuiltin (freshStrings "void"),
+                    Tuple "Tuple0" $ basicBuiltin (TGround "Tuple0") (freshStrings "unit"),
+                    Tuple "Void" $ basicBuiltin (TGround "Void") (freshStrings "void"),
                     Tuple "Tuple2" tuple2Builtin,
                     Tuple "Tuple3" tuple3Builtin,
                     Tuple "Tuple4" tuple4Builtin,

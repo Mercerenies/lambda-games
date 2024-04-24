@@ -15,7 +15,7 @@
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions(
                              LambdaF(..), TaggedLambdaF(..), KleisliEndo, Lambda, TaggedLambda,
-                             class LambdaTag, tagApply,
+                             class LambdaTag, tagApply, getLambdaTag, getLambdaFromTagged,
                              class GroundKindInferrable, class NeverConstraint, getGroundKind,
                              getKind, assertKind, expectFunction, expectGround
                             ) where
@@ -58,6 +58,12 @@ class LambdaTag t where
 instance LambdaTag TType where
     tagApply = TApp
 
+getLambdaTag :: forall t m r a. TaggedLambdaF t m r a -> t
+getLambdaTag (TaggedLambdaF t _) = t
+
+getLambdaFromTagged :: forall t m r a. LambdaTag t => TaggedLambdaF t m r a -> LambdaF m r a
+getLambdaFromTagged (TaggedLambdaF _ lam) = lam
+
 getKind :: forall m r a. GroundKindInferrable r => LambdaF m r a -> TKind
 getKind (Ground g) = Ty $ getGroundKind g
 getKind (Function { domain, codomain }) = domain `KArrow` codomain
@@ -77,8 +83,8 @@ expectFunction domain codomain =
                   }
       f @ (Function { body }) -> body <$ assertKind (getKind f) (domain `KArrow` codomain)
 
-expectGround :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-                GroundKind -> Lambda m r -> m r
+expectGround :: forall e m r a. FromKindError e => MonadError e m => GroundKindInferrable r =>
+                GroundKind -> LambdaF m r a -> m r
 expectGround expectedKind (Ground r) = r <$ assertKind (Ty expectedKind) (Ty $ getGroundKind r)
 expectGround expectedKind f = throwError $ kindError {
                                 expected: Ty expectedKind,

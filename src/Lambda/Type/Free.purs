@@ -21,10 +21,11 @@ module Lambda.Type.Free(
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
 import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..),
-                              expectGroundTy, expectGroundConstraint)
+                              expectGroundTy', expectGroundConstraint')
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
-import Lambda.Type.Functions (LambdaF(..), Lambda, assertKind, getKind)
+import Lambda.Type.Functions (LambdaF(..), TaggedLambdaF(..), TaggedLambda, assertKind,
+                              getKind, getLambdaFromTagged)
 import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin(..))
 import Lambda.Type.LambdaContext.FreeTheoremEnv (FreeTheoremEnv, withBinding, lookupBinding, lookupBuiltin,
                                                  askVariableNamer, doBoundSubstitutionsLeft,
@@ -50,16 +51,16 @@ import Prelude
 appSection :: Term -> Term
 appSection x = OperatorSectionLeft "$" x
 
-ground :: forall m. Relation -> Lambda m (WithContexts Relation)
-ground = Ground <<< NonContext
+ground :: forall m. TType -> Relation -> TaggedLambda TType m (WithContexts Relation)
+ground t = TaggedLambdaF t <<< Ground <<< NonContext
 
 -- Lift a closed type into a relation.
 relationify :: forall m. MonadError TypeError m =>
-               TType -> LambdaContextT m (Lambda (LambdaContextT m) (WithContexts Relation))
+               TType -> LambdaContextT m (TaggedLambda TType (LambdaContextT m) (WithContexts Relation))
 relationify (TVar x) = do
   rel <- lookupBinding x
   case rel of
-    Just relation -> pure (ground relation)
+    Just relation -> pure (ground (TVar x) relation)
     Nothing -> throwError $ UnboundVariable x
 relationify (TGround x) = do
     lam <- lookupBuiltin x
@@ -69,39 +70,39 @@ relationify (TGround x) = do
 relationify (TApp ff aa) = do
   f <- relationify ff
   a <- relationify aa
-  case f of
+  case getLambdaFromTagged f of
     Ground _ -> throwError $ ExpectedTypeFunction ff
     Function { domain, codomain: _, body: f' } -> do
-      assertKind domain (getKind a)
+      assertKind domain (getKind $ getLambdaFromTagged a)
       unMu <$> f' (Mu a)
 relationify (TArrow a b) = do
   namer <- askVariableNamer
   withFreshName2 (suggestedVariableName namer a) $ \a1 a2 -> do
-    ra <- relationify a >>= expectGroundTy
-    rb <- relationify b >>= expectGroundTy
+    ra <- relationify a >>= expectGroundTy'
+    rb <- relationify b >>= expectGroundTy'
     aLeft <- doBoundSubstitutionsLeft a
     aRight <- doBoundSubstitutionsRight a
-    pure $ ground $ rForall a1 aLeft $ rForall a2 aRight $
-                      runRelation ra (Var a1) (Var a2) `rImplies`
-                        mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
+    pure $ ground (TArrow a b) $ rForall a1 aLeft $ rForall a2 aRight $
+                                   runRelation ra (Var a1) (Var a2) `rImplies`
+                                     mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
 relationify (TContextArrow ctx b) = do
-  rctx <- relationify ctx >>= expectGroundConstraint >>= computeTypeclassAssumptions
-  rb <- relationify b >>= expectGroundTy
-  pure $ ground $ foldr rImplies rb rctx
+  rctx <- relationify ctx >>= expectGroundConstraint' >>= computeTypeclassAssumptions
+  rb <- relationify b >>= expectGroundTy'
+  pure $ ground (TContextArrow ctx b) $ foldr rImplies rb rctx
 relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
       let rel = mapTerms (App (Var f)) identity identityRelation
-      innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGroundTy
-      pure $ ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
-                        rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
+      innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGroundTy'
+      pure $ ground (TForall x body) $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
+                                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
 computeTypeclassAssumptions :: forall m. MonadError TypeError m =>
                                TypeclassBody -> LambdaContextT m (Array Predicate)
 computeTypeclassAssumptions (TypeclassBody functions) = traverse computeAssumption functions
     where computeAssumption :: TypeclassFunction -> LambdaContextT m Predicate
           computeAssumption (TypeclassFunction { methodName, methodType }) = ado
-            methodRelation <- relationify methodType >>= expectGroundTy
+            methodRelation <- relationify methodType >>= expectGroundTy'
             in runRelation methodRelation (Var methodName) (Var methodName)
 
 newtype FreeTheoremOptions a = FreeTheoremOptions {
@@ -118,7 +119,7 @@ describeFreeTheoremGeneral (FreeTheoremOptions opts) t =
         fullDescription = do
           namer <- askVariableNamer
           withFreshName (suggestedVariableName namer t) $ \a -> do
-            r <- relationify t >>= expectGroundTy
+            r <- relationify t >>= expectGroundTy'
             let description = opts.simplifier (runRelation r (Var a) (Var a))
             pure $ opts.finalizer a t description
         readerContext :: FreeTheoremEnv (LambdaContextT (Either TypeError))
