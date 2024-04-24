@@ -17,6 +17,7 @@ module Lambda.Type.Builtins(
                             reservedNames,
                             basicBuiltin, listBuiltin, tuple2Builtin, tuple3Builtin,
                             tuple4Builtin, tuple5Builtin, eitherBuiltin, semigroupBuiltin,
+                            monoidBuiltin,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
@@ -51,7 +52,7 @@ import Prelude
 -- Names that we might introduce and assume are not being shadowed by
 -- a lambda parameter anywhere.
 reservedNames :: Array String
-reservedNames = ["fmap", "first", "second", "Left", "Right", "left", "right"]
+reservedNames = ["fmap", "first", "second", "Left", "Right", "left", "right", "mempty"]
 
 -- Names for use in generated lambda expressions.
 temporaryVarNames :: InfiniteList String
@@ -185,6 +186,19 @@ semigroupBuiltin = Builtin {
                      nameStream: unusedNameStream
                    }
 
+monoidTypeclass :: TType -> TypeclassBody
+monoidTypeclass a = semigroupTypeclass a <> Typeclass.singleton (BasicName "mempty") a
+
+monoidType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+              TaggedLambda TType m (WithContexts Relation)
+monoidType = lambdaCtx1 (TGround "Monoid") \ta -> Context $ monoidTypeclass ta
+
+monoidBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+monoidBuiltin = Builtin {
+                  relation: monoidType,
+                  nameStream: unusedNameStream
+                }
+
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Int" $ basicBuiltin (TGround "Int") (freshStrings "n"),
@@ -200,7 +214,8 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Tuple4" tuple4Builtin,
                     Tuple "Tuple5" tuple5Builtin,
                     Tuple "Either" eitherBuiltin,
-                    Tuple "Semigroup" semigroupBuiltin
+                    Tuple "Semigroup" semigroupBuiltin,
+                    Tuple "Monoid" monoidBuiltin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
