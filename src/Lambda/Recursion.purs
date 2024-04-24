@@ -16,8 +16,7 @@
 module Lambda.Recursion(
                         Algebra,
                         Mu(..), unMu,
-                        WithTag(..), getTag, getTaggedValue,
-                        cata
+                        cata, ana
                        ) where
 
 import Prelude
@@ -25,17 +24,11 @@ import Prelude
 type Algebra :: (Type -> Type) -> Type -> Type
 type Algebra f a = f a -> a
 
+type Coalgebra :: (Type -> Type) -> Type -> Type
+type Coalgebra f a = a -> f a
+
 newtype Mu :: (Type -> Type) -> Type
 newtype Mu f = Mu (f (Mu f))
-
-data WithTag :: Type -> (Type -> Type) -> Type -> Type
-data WithTag t f a = WithTag t (f a)
-
-getTag :: forall t f a. WithTag t f a -> t
-getTag (WithTag t _) = t
-
-getTaggedValue :: forall t f a. WithTag t f a -> f a
-getTaggedValue (WithTag _ fa) = fa
 
 unMu :: forall f. Mu f -> f (Mu f)
 unMu (Mu x) = x
@@ -43,3 +36,7 @@ unMu (Mu x) = x
 cata :: forall f a. Functor f => Algebra f a -> Mu f -> a
 cata alg = go
     where go (Mu x) = alg $ map go x
+
+ana :: forall f a. Functor f => Coalgebra f a -> a -> Mu f
+ana coalg = go
+    where go x = Mu $ map go $ coalg x

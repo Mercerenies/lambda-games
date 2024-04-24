@@ -14,7 +14,7 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions(
-                             LambdaF(..), KleisliEndo, Lambda,
+                             LambdaF(..), TaggedLambdaF(..), KleisliEndo, Lambda, TaggedLambda,
                              class GroundKindInferrable, class NeverConstraint, getGroundKind,
                              getKind, assertKind, expectFunction, expectGround
                             ) where
@@ -30,7 +30,11 @@ import Control.Monad.Error.Class (class MonadError, throwError)
 -- can define type-level operators.
 data LambdaF m r a = Ground r | Function { domain :: TKind, codomain :: TKind, body :: KleisliEndo m a }
 
+data TaggedLambdaF t m r a = TaggedLambdaF t (LambdaF m r a)
+
 type Lambda m r = LambdaF m r (Mu (LambdaF m r))
+
+type TaggedLambda t m r = TaggedLambdaF t m r (Mu (TaggedLambdaF t m r))
 
 type KleisliEndo m a = a -> m a
 
@@ -68,3 +72,7 @@ expectGround expectedKind f = throwError $ kindError {
                                 expected: Ty expectedKind,
                                 actual: getKind f
                               }
+
+-- /////
+--liftTagged :: forall t m r. t -> Lambda m r -> TaggedLambda t m r
+--liftTagged 
