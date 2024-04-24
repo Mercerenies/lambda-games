@@ -24,7 +24,7 @@ import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunc
                               expectGroundTy, expectGroundConstraint)
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
-import Lambda.Type.Functions (Lambda(..), assertKind, getKind)
+import Lambda.Type.Functions (LambdaF(..), Lambda, assertKind, getKind)
 import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin(..))
 import Lambda.Type.LambdaContext.FreeTheoremEnv (FreeTheoremEnv, withBinding, lookupBinding, lookupBuiltin,
                                                  askVariableNamer, doBoundSubstitutionsLeft,
@@ -36,6 +36,7 @@ import Lambda.Predicate (Predicate)
 import Lambda.Monad.Names (withFreshName, withFreshName2, freshStrings)
 import Lambda.PrettyShow (prettyShow)
 import Lambda.MathShow (mathShow, Latex(..), texttt)
+import Lambda.Recursion (Mu(..), unMu)
 
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
@@ -72,7 +73,7 @@ relationify (TApp ff aa) = do
     Ground _ -> throwError $ ExpectedTypeFunction ff
     Function { domain, codomain: _, body: f' } -> do
       assertKind domain (getKind a)
-      f' a
+      unMu <$> f' (Mu a)
 relationify (TArrow a b) = do
   namer <- askVariableNamer
   withFreshName2 (suggestedVariableName namer a) $ \a1 a2 -> do

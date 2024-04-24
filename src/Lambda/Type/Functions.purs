@@ -14,22 +14,25 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions(
-                             Lambda(..), LambdaFunction,
+                             LambdaF(..), KleisliEndo, Lambda,
                              class GroundKindInferrable, class NeverConstraint, getGroundKind,
                              getKind, assertKind, expectFunction, expectGround
                             ) where
 
 import Lambda.Type.Kind (TKind(..), GroundKind)
 import Lambda.Type.Error (class FromKindError, kindError)
+import Lambda.Recursion (Mu)
 
 import Prelude
 import Control.Monad.Error.Class (class MonadError, throwError)
 
 -- Very simple lambda calculus built on top of the type system, so we
 -- can define type-level operators.
-data Lambda m r = Ground r | Function { domain :: TKind, codomain :: TKind, body :: LambdaFunction m r }
+data LambdaF m r a = Ground r | Function { domain :: TKind, codomain :: TKind, body :: KleisliEndo m a }
 
-type LambdaFunction m r = Lambda m r -> m (Lambda m r)
+type Lambda m r = LambdaF m r (Mu (LambdaF m r))
+
+type KleisliEndo m a = a -> m a
 
 class GroundKindInferrable a where
     getGroundKind :: a -> GroundKind
@@ -39,7 +42,7 @@ class GroundKindInferrable a where
 -- type. This assertion is NOT checked.
 class GroundKindInferrable a <= NeverConstraint a
 
-getKind :: forall m r. GroundKindInferrable r => Lambda m r -> TKind
+getKind :: forall m r a. GroundKindInferrable r => LambdaF m r a -> TKind
 getKind (Ground g) = Ty $ getGroundKind g
 getKind (Function { domain, codomain }) = domain `KArrow` codomain
 
@@ -48,8 +51,8 @@ assertKind expected actual
     | expected == actual = pure unit
     | otherwise = throwError $ kindError { expected, actual }
 
-expectFunction :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-                  TKind -> TKind -> Lambda m r -> m (LambdaFunction m r)
+expectFunction :: forall e m r a. FromKindError e => MonadError e m => GroundKindInferrable r =>
+                  TKind -> TKind -> LambdaF m r a -> m (KleisliEndo m a)
 expectFunction domain codomain =
     case _ of
       Ground g -> throwError $ kindError {

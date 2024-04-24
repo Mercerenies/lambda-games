@@ -23,7 +23,7 @@ module Lambda.Type.Builtins(
 import Lambda.Type.Relation (Relation, identityRelation,
                              zipRelationsWith, zipRelationsWith3, zipRelationsWith4, zipRelationsWith5,
                              TermHole)
-import Lambda.Type.Functions (Lambda(..))
+import Lambda.Type.Functions (Lambda, LambdaF(..))
 import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))

@@ -19,10 +19,11 @@ module Lambda.Type.Functions.Factory(
 
 -- Helpers for producing Lambdas of various function types.
 
-import Lambda.Type.Functions (Lambda(..), class GroundKindInferrable)
+import Lambda.Type.Functions (Lambda, LambdaF(..), class GroundKindInferrable)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.Kind (TKind(..), GroundKind(..))
 import Lambda.Type.Typeclass (WithContexts, expectGroundTy)
+import Lambda.Recursion (Mu(..))
 
 import Prelude
 import Safe.Coerce (coerce)
@@ -94,6 +95,6 @@ instance (GroundKindInferrable r, MonoLambda x r s) => MonoLambda (s -> x) r s w
         Function {
           domain: Ty GType,
           codomain: monoKind (Proxy :: Proxy x),
-          body: \a -> (monoLambda args <<< f) <$> args.extractor a
+          body: \(Mu a) -> (Mu <<< monoLambda args <<< f) <$> args.extractor a
         }
     monoKind _ = Ty GType `KArrow` monoKind (Proxy :: Proxy x)
