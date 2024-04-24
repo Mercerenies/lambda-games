@@ -27,7 +27,7 @@ import Lambda.Type.Functions (Lambda(..))
 import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
-import Lambda.Type.Typeclass (WithContexts(..))
+import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..))
 import Lambda.Term (Term(..), Pattern(..), allVariables)
 import Lambda.Util (toList)
 import Lambda.Util.InfiniteList (InfiniteList)
@@ -163,6 +163,16 @@ eitherBuiltin = Builtin {
                   relation: eitherType,
                   nameStream: freshStrings "eit"
                 }
+
+-- Builtins of kind 'Constraint' should never use their name stream,
+-- so make one with contrived names so we notice if we ever
+-- accidentally use it.
+unusedNameStream :: InfiniteList String
+unusedNameStream = freshStrings "UNUSED_VARIABLE"
+
+--semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+--                 Lambda m (WithContexts Relation)
+--semigroupType = lambda1 \ra -> 
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
