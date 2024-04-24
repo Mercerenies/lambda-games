@@ -1,6 +1,6 @@
 
 module Lambda.Type.Typeclass(
-                              TypeclassBody(..), TypeclassFunction(..), MethodName(..),
+                              TypeclassBody(..), TypeclassFunction(..),
                               WithContexts(..), expectGroundTy
                              ) where
 
@@ -18,12 +18,9 @@ import Control.Monad.Error.Class (class MonadError)
 newtype TypeclassBody = TypeclassBody (Array TypeclassFunction)
 
 newtype TypeclassFunction = TypeclassFunction {
-      methodName :: MethodName,
+      methodName :: String, -- //// (TODO) support operators as a simplification somehow
       methodType :: TType
     }
-
-data MethodName = StringName String
-                | OperatorName String
 
 derive instance Eq TypeclassBody
 derive instance Generic TypeclassBody _
@@ -35,12 +32,6 @@ derive instance Eq TypeclassFunction
 derive instance Generic TypeclassFunction _
 
 instance Show TypeclassFunction where
-    show x = genericShow x
-
-derive instance Eq MethodName
-derive instance Generic MethodName _
-
-instance Show MethodName where
     show x = genericShow x
 
 -- Adds support for constraint kinds to an existing kind system.
