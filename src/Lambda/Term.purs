@@ -118,9 +118,10 @@ appRightPrecedence = 201
 -- associate and 2 * x + 1 on the side we don't, so that we can get
 -- the parentheses correct.
 operatorPrecedences :: String -> Tuple Int Int
+operatorPrecedences "$" = Tuple 1 0 -- infixr 0 in Prelude
 operatorPrecedences "+++" = Tuple 5 4 -- infixr 2 in Control.Arrow
 operatorPrecedences "***" = Tuple 7 6 -- infixr 3 in Control.Arrow
-operatorPrecedences "$" = Tuple 1 0 -- infixr 0 in Prelude
+operatorPrecedences "<>" = Tuple 13 12 -- Infixr 6 in Prelude
 operatorPrecedences _ = Tuple 18 19 -- infixl 9 is the default fixity
 
 operatorPrecedenceLeft :: String -> Int
