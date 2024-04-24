@@ -89,7 +89,7 @@ relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
       let rel = mapTerms (App (Var f)) identity identityRelation
-      innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGroundTy
+      innerRelation <- (withBinding x rel (Tuple (TVar x1) (TVar x2)) $ relationify body) >>= expectGroundTy
       pure $ ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 

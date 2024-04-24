@@ -21,7 +21,7 @@ module Lambda.Type.LambdaContext.FreeTheoremEnv(
                                                 doBoundSubstitutionsLeft, doBoundSubstitutionsRight
                                                ) where
 
-import Lambda.Type (TType(..))
+import Lambda.Type (TType)
 import Lambda.Type (substitute) as Type
 import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin)
 import Lambda.Type.BuiltinsMap (lookup, variableNamer) as BuiltinsMap
@@ -44,21 +44,21 @@ newtype FreeTheoremEnv m = FreeTheoremEnv {
 
 newtype RelationBinding = RelationBinding {
       relation :: Relation,
-      leftVariable :: String,
-      rightVariable :: String
+      leftSubstitution :: TType,
+      rightSubstitution :: TType
     }
 
 fromBuiltinsMap :: forall m. BuiltinsMap m -> FreeTheoremEnv m
 fromBuiltinsMap builtinsMap = FreeTheoremEnv { builtinsMap, quantifiedBindings: Map.empty }
 
-addBinding :: forall m. String -> Relation -> Tuple String String ->
+addBinding :: forall m. String -> Relation -> Tuple TType TType ->
               FreeTheoremEnv m -> FreeTheoremEnv m
-addBinding x relation (Tuple leftVariable rightVariable) (FreeTheoremEnv env) =
-    let newBinding = RelationBinding { relation, leftVariable, rightVariable } in
+addBinding x relation (Tuple leftSubstitution rightSubstitution) (FreeTheoremEnv env) =
+    let newBinding = RelationBinding { relation, leftSubstitution, rightSubstitution } in
     FreeTheoremEnv $ env { quantifiedBindings = Map.insert x newBinding env.quantifiedBindings }
 
 withBinding :: forall m n a. MonadReader (FreeTheoremEnv n) m =>
-               String -> Relation -> Tuple String String ->
+               String -> Relation -> Tuple TType TType ->
                m a -> m a
 withBinding x r tup = local (addBinding x r tup)
 
@@ -76,17 +76,17 @@ mapToList :: forall k v. Ord k => Map k v -> List (Tuple k v)
 mapToList = Map.toUnfoldable
 
 -- Do a Type.substitute on the type, for each binding in the bindings map.
-doBoundSubstitutions :: forall m n. MonadAsk (FreeTheoremEnv n) m => (RelationBinding -> String) -> TType -> m TType
+doBoundSubstitutions :: forall m n. MonadAsk (FreeTheoremEnv n) m => (RelationBinding -> TType) -> TType -> m TType
 doBoundSubstitutions f t = ado
   bindings <- asks \(FreeTheoremEnv env) -> env.quantifiedBindings
-  in mapToList bindings # foldr (\(Tuple x binding) t' -> Type.substitute x (TVar $ f binding) t') t
+  in mapToList bindings # foldr (\(Tuple x binding) t' -> Type.substitute x (f binding) t') t
 
 -- Do a Type.substitute on the type, for each binding in the bindings map, using leftVariable.
 doBoundSubstitutionsLeft :: forall m n. MonadAsk (FreeTheoremEnv n) m => TType -> m TType
 doBoundSubstitutionsLeft = doBoundSubstitutions onLeft
-    where onLeft (RelationBinding binding) = binding.leftVariable
+    where onLeft (RelationBinding binding) = binding.leftSubstitution
 
 -- Do a Type.substitute on the type, for each binding in the bindings map, using rightVariable.
 doBoundSubstitutionsRight :: forall m n. MonadAsk (FreeTheoremEnv n) m => TType -> m TType
 doBoundSubstitutionsRight = doBoundSubstitutions onRight
-    where onRight (RelationBinding binding) = binding.rightVariable
+    where onRight (RelationBinding binding) = binding.rightSubstitution
