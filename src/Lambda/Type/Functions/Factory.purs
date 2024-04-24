@@ -24,7 +24,7 @@ import Lambda.Type.Functions (LambdaF(..), TaggedLambda, TaggedLambdaF(..), clas
                               class LambdaTag, tagApply)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.Kind (TKind(..), GroundKind(..))
-import Lambda.Type.Typeclass (WithContexts, expectGroundTy, TypeclassBody)
+import Lambda.Type.Typeclass (WithContexts, expectGroundTy)
 import Lambda.Recursion (Mu(..))
 
 import Prelude

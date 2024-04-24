@@ -1,9 +1,10 @@
 
 module Lambda.Type.Typeclass(
-                              TypeclassBody(..), TypeclassFunction(..),
+                              TypeclassBody, TypeclassFunction(..),
                               WithContexts(..),
                               expectGroundTy, expectGroundConstraint,
-                              expectGroundTy', expectGroundConstraint'
+                              expectGroundTy', expectGroundConstraint',
+                              singleton, toArray
                              ) where
 
 import Lambda.Type (TType)
@@ -26,10 +27,8 @@ newtype TypeclassFunction = TypeclassFunction {
     }
 
 derive instance Eq TypeclassBody
-derive instance Generic TypeclassBody _
-
-instance Show TypeclassBody where
-    show x = genericShow x
+derive newtype instance Semigroup TypeclassBody
+derive newtype instance Monoid TypeclassBody
 
 derive instance Eq TypeclassFunction
 derive instance Generic TypeclassFunction _
@@ -76,3 +75,9 @@ expectGroundTy' (TaggedLambdaF _ lam) = expectGroundTy lam
 expectGroundConstraint' :: forall e t m r a. FromKindError e => MonadError e m => NeverConstraint r =>
                            TaggedLambdaF t m (WithContexts r) a -> m TypeclassBody
 expectGroundConstraint' (TaggedLambdaF _ lam) = expectGroundConstraint lam
+
+singleton :: String -> TType -> TypeclassBody
+singleton methodName methodType = TypeclassBody [TypeclassFunction { methodName, methodType }]
+
+toArray :: TypeclassBody -> Array TypeclassFunction
+toArray (TypeclassBody functions) = functions

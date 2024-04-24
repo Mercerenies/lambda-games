@@ -25,7 +25,7 @@ import Lambda.Type.Relation (Relation, identityRelation,
                              zipRelationsWith, zipRelationsWith3, zipRelationsWith4, zipRelationsWith5,
                              TermHole)
 import Lambda.Type.Functions (TaggedLambda, TaggedLambdaF(..), Lambda, LambdaF(..))
-import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5)
+import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5, lambdaCtx1)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
 import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..))
@@ -173,7 +173,7 @@ unusedNameStream = freshStrings "UNUSED_VARIABLE"
 
 --semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
 --                 TaggedLambda m (WithContexts Relation)
---semigroupType = lambda1 \ra -> 
+--semigroupType = lambdaCtx1 \ra -> Context $ 
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [

@@ -20,8 +20,9 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
-import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..),
+import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody, TypeclassFunction(..),
                               expectGroundTy', expectGroundConstraint')
+import Lambda.Type.Typeclass (toArray) as Typeclass
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (LambdaF(..), TaggedLambdaF(..), TaggedLambda, assertKind,
@@ -99,7 +100,7 @@ relationify (TForall x body) = do
 
 computeTypeclassAssumptions :: forall m. MonadError TypeError m =>
                                TypeclassBody -> LambdaContextT m (Array Predicate)
-computeTypeclassAssumptions (TypeclassBody functions) = traverse computeAssumption functions
+computeTypeclassAssumptions functions = traverse computeAssumption (Typeclass.toArray functions)
     where computeAssumption :: TypeclassFunction -> LambdaContextT m Predicate
           computeAssumption (TypeclassFunction { methodName, methodType }) = ado
             methodRelation <- relationify methodType >>= expectGroundTy'
