@@ -16,6 +16,7 @@
 module Lambda.Recursion(
                         Algebra,
                         Mu(..), unMu,
+                        WithTag(..), getTag, getTaggedValue,
                         cata
                        ) where
 
@@ -26,6 +27,15 @@ type Algebra f a = f a -> a
 
 newtype Mu :: (Type -> Type) -> Type
 newtype Mu f = Mu (f (Mu f))
+
+data WithTag :: Type -> (Type -> Type) -> Type -> Type
+data WithTag t f a = WithTag t (f a)
+
+getTag :: forall t f a. WithTag t f a -> t
+getTag (WithTag t _) = t
+
+getTaggedValue :: forall t f a. WithTag t f a -> f a
+getTaggedValue (WithTag _ fa) = fa
 
 unMu :: forall f. Mu f -> f (Mu f)
 unMu (Mu x) = x
