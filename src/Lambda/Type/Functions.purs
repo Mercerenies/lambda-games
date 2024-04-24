@@ -15,10 +15,12 @@
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions(
                              LambdaF(..), TaggedLambdaF(..), KleisliEndo, Lambda, TaggedLambda,
+                             class LambdaTag, tagApply,
                              class GroundKindInferrable, class NeverConstraint, getGroundKind,
                              getKind, assertKind, expectFunction, expectGround
                             ) where
 
+import Lambda.Type (TType(..))
 import Lambda.Type.Kind (TKind(..), GroundKind)
 import Lambda.Type.Error (class FromKindError, kindError)
 import Lambda.Recursion (Mu)
@@ -46,6 +48,16 @@ class GroundKindInferrable a where
 -- type. This assertion is NOT checked.
 class GroundKindInferrable a <= NeverConstraint a
 
+-- Types that can be used as a tag for a TaggedLambda. For a type to
+-- fully support TaggedLambda, it must have an "apply" operation that
+-- results from applying one to another. The usual example of this is
+-- TType, which has TApp.
+class LambdaTag t where
+    tagApply :: t -> t -> t
+
+instance LambdaTag TType where
+    tagApply = TApp
+
 getKind :: forall m r a. GroundKindInferrable r => LambdaF m r a -> TKind
 getKind (Ground g) = Ty $ getGroundKind g
 getKind (Function { domain, codomain }) = domain `KArrow` codomain
@@ -72,7 +84,3 @@ expectGround expectedKind f = throwError $ kindError {
                                 expected: Ty expectedKind,
                                 actual: getKind f
                               }
-
--- /////
---liftTagged :: forall t m r. t -> Lambda m r -> TaggedLambda t m r
---liftTagged 
