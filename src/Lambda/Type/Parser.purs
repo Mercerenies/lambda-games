@@ -136,7 +136,7 @@ arrowLeftHandSide :: forall m. Monad m => ParserT String m (List TType)
 arrowLeftHandSide = parenthesized <|> basic
     where parenthesized = between (char '(' *> skipSpaces) (skipSpaces <* char ')') $
                             sepBy (defer \_ -> expression) (try $ skipSpaces *> char ',' <* skipSpaces)
-          basic = List.singleton <$> basicExpression
+          basic = List.singleton <$> appExpression
 
 arrowExpression :: forall m. Monad m => ParserT String m TType
 arrowExpression = do
