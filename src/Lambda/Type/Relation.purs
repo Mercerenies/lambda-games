@@ -15,7 +15,7 @@
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Relation(
                             PredicateZipper, runPredicateZipper,
-                            TermHole, Relation, TaggedRelation(..),
+                            TermHole, Relation, TypeTagged(..), TaggedRelation,
                             runRelation, identityRelation, getTagType, runTaggedRelation,
                             rImplies, rForall,
                             mapTerms,
@@ -68,7 +68,9 @@ type TermHole = Term -> Term
 type Relation = PredicateZipper TermHole TermHole
 
 -- A Relation tagged with its original type.
-data TaggedRelation = TaggedRelation TType Relation
+data TypeTagged r = TypeTagged TType r
+
+type TaggedRelation = TypeTagged Relation
 
 -- All PredicateZippers are assumed to be of kind Type.
 instance GroundKindInferrable (PredicateZipper a b) where
@@ -106,10 +108,10 @@ runRelation :: Relation -> Term -> Term -> Predicate
 runRelation r a b = runPredicateZipper r (_ $ a) (_ $ b)
 
 runTaggedRelation :: TaggedRelation -> Term -> Term -> Predicate
-runTaggedRelation (TaggedRelation _ r) = runRelation r
+runTaggedRelation (TypeTagged _ r) = runRelation r
 
-getTagType :: TaggedRelation -> TType
-getTagType (TaggedRelation ttype _) = ttype
+getTagType :: forall r. TypeTagged r -> TType
+getTagType (TypeTagged ttype _) = ttype
 
 identityRelation :: forall a b. PredicateZipper (a -> a) (b -> b)
 identityRelation = PEquals identity identity
