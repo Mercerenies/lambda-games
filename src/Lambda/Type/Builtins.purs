@@ -20,6 +20,7 @@ module Lambda.Type.Builtins(
                             namedBuiltinsMap, allBuiltins
                            ) where
 
+import Lambda.Type (TType(..))
 import Lambda.Type.Relation (Relation, identityRelation,
                              zipRelationsWith, zipRelationsWith3, zipRelationsWith4, zipRelationsWith5,
                              TermHole)
@@ -74,7 +75,7 @@ basicBuiltin nameStream = Builtin {
                           }
 
 listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-            Lambda m (WithContexts Relation)
+            Lambda m (WithContexts m Relation)
 listType = lambda1 \r -> NonContext $ bimap liftToFmap liftToFmap r
     where liftToFmap :: TermHole -> TermHole
           liftToFmap f = App (App (Var "fmap") (liftToLambda f))
@@ -89,7 +90,7 @@ listBuiltin = Builtin {
               }
 
 tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
+              Lambda m (WithContexts m Relation)
 tuple2Type = lambda2 \ra rb -> NonContext $ zipRelationsWith liftToTuple2 liftToTuple2 ra rb
     where liftToTuple2 :: TermHole -> TermHole -> TermHole
           liftToTuple2 a b = App (OperatorApp (liftToLambda a) "***" (liftToLambda b))
@@ -121,7 +122,7 @@ liftToTuple :: Array TermHole -> TermHole
 liftToTuple xs = App (tupleMap $ map liftToLambda xs)
 
 tuple3Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
+              Lambda m (WithContexts m Relation)
 tuple3Type = lambda3 \ra rb rc -> NonContext $ zipRelationsWith3 go go ra rb rc
     where go a b c = liftToTuple [a, b, c]
 
@@ -132,7 +133,7 @@ tuple3Builtin = Builtin {
                 }
 
 tuple4Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
+              Lambda m (WithContexts m Relation)
 tuple4Type = lambda4 \ra rb rc rd -> NonContext $ zipRelationsWith4 go go ra rb rc rd
     where go a b c d = liftToTuple [a, b, c, d]
 
@@ -143,7 +144,7 @@ tuple4Builtin = Builtin {
                 }
 
 tuple5Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
+              Lambda m (WithContexts m Relation)
 tuple5Type = lambda5 \ra rb rc rd re -> NonContext $ zipRelationsWith5 go go ra rb rc rd re
     where go a b c d e = liftToTuple [a, b, c, d, e]
 
@@ -154,7 +155,7 @@ tuple5Builtin = Builtin {
                 }
 
 eitherType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
-              Lambda m (WithContexts Relation)
+              Lambda m (WithContexts m Relation)
 eitherType = lambda2 \ra rb -> NonContext $ zipRelationsWith liftToEither liftToEither ra rb
     where liftToEither :: TermHole -> TermHole -> TermHole
           liftToEither a b = App (OperatorApp (liftToLambda a) "+++" (liftToLambda b))
@@ -171,8 +172,11 @@ eitherBuiltin = Builtin {
 unusedNameStream :: InfiniteList String
 unusedNameStream = freshStrings "UNUSED_VARIABLE"
 
+semigroupMethod :: TType
+semigroupMethod = TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")
+
 --semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
---                 Lambda m (WithContexts Relation)
+--                 Lambda m (WithContexts m Relation)
 --semigroupType = lambda1 \ra -> 
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)

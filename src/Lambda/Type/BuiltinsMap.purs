@@ -38,7 +38,7 @@ newtype BuiltinsMap m = BuiltinsMap (LookupMap String (Builtin m))
 
 newtype Builtin :: (Type -> Type) -> Type
 newtype Builtin m = Builtin {
-      relation :: Lambda m (WithContexts Relation),
+      relation :: Lambda m (WithContexts m Relation),
       nameStream :: InfiniteList String
     }
 

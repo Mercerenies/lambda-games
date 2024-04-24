@@ -20,9 +20,7 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
-import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody, TypeclassFunction(..),
-                              expectGroundTy, expectGroundConstraint)
-import Lambda.Type.Typeclass (toArray) as Typeclass
+import Lambda.Type.Typeclass (WithContexts(..), expectGroundTy, expectGroundConstraint, computeAssumptions)
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), assertKind, getKind)
@@ -49,12 +47,12 @@ import Prelude
 appSection :: Term -> Term
 appSection x = OperatorSectionLeft "$" x
 
-ground :: forall m. Relation -> Lambda m (WithContexts Relation)
+ground :: forall m. Relation -> Lambda m (WithContexts m Relation)
 ground = Ground <<< NonContext
 
 -- Lift a closed type into a relation.
 relationify :: forall m. MonadError TypeError m =>
-               TType -> LambdaContextT m (Lambda (LambdaContextT m) (WithContexts Relation))
+               TType -> LambdaContextT m (Lambda (LambdaContextT m) (WithContexts (LambdaContextT m) Relation))
 relationify (TVar x) = do
   rel <- lookupBinding x
   case rel of
@@ -84,10 +82,9 @@ relationify (TArrow a b) = do
                       runRelation ra (Var a1) (Var a2) `rImplies`
                         mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
 relationify (TContextArrow ctx b) = do
-  rctx <- relationify ctx >>= expectGroundConstraint
-  let rctx' = computeTypeclassAssumptions rctx
+  rctx <- relationify ctx >>= expectGroundConstraint >>= computeAssumptions relationify
   rb <- relationify b >>= expectGroundTy
-  pure $ ground $ foldr rImplies rb rctx'
+  pure $ ground $ foldr rImplies rb rctx
 relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
@@ -95,12 +92,6 @@ relationify (TForall x body) = do
       innerRelation <- (withBinding x rel (Tuple x1 x2) $ relationify body) >>= expectGroundTy
       pure $ ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
-
-computeTypeclassAssumptions :: TypeclassBody -> Array Predicate
-computeTypeclassAssumptions = map computeAssumption <<< Typeclass.toArray
-    where computeAssumption :: TypeclassFunction -> Predicate
-          computeAssumption (TypeclassFunction { methodName, methodType }) =
-              runRelation methodType (Var methodName) (Var methodName)
 
 newtype FreeTheoremOptions a = FreeTheoremOptions {
       simplifier :: Predicate -> Predicate,

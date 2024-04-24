@@ -31,32 +31,32 @@ import Control.Monad.Error.Class (class MonadError)
 
 -- Helper for producing lambdas of kind k
 lambda0 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           WithContexts r -> Lambda m (WithContexts r)
+           WithContexts m r -> Lambda m (WithContexts m r)
 lambda0 f = monoLambda withContextsLambdaArgs $ mono f
 
 -- Helper for producing lambdas of kind (Type -> k)
 lambda1 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> WithContexts r) -> Lambda m (WithContexts r)
+           (r -> WithContexts m r) -> Lambda m (WithContexts m r)
 lambda1 f = monoLambda withContextsLambdaArgs \a -> mono (f a)
 
 -- Helper for producing lambdas of kind (Type -> Type -> k)
 lambda2 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+           (r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
 lambda2 f = monoLambda withContextsLambdaArgs \a b -> mono (f a b)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> k)
 lambda3 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+           (r -> r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
 lambda3 f = monoLambda withContextsLambdaArgs \a b c -> mono (f a b c)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> k)
 lambda4 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+           (r -> r -> r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
 lambda4 f = monoLambda withContextsLambdaArgs \a b c d -> mono (f a b c d)
 
 -- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> k)
 lambda5 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-           (r -> r -> r -> r -> r -> WithContexts r) -> Lambda m (WithContexts r)
+           (r -> r -> r -> r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
 lambda5 f = monoLambda withContextsLambdaArgs \a b c d e -> mono (f a b c d e)
 
 -- Helper for producing lambdas which take arbitrary numbers of
@@ -76,7 +76,7 @@ type LambdaArgs m r s = {
     }
 
 withContextsLambdaArgs :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-                          LambdaArgs m (WithContexts r) r
+                          LambdaArgs m (WithContexts m r) r
 withContextsLambdaArgs = {
     extractor: expectGroundTy
   }
