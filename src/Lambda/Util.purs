@@ -17,12 +17,14 @@ module Lambda.Util(
                    toList, toUnfoldable,
                    fromChars, guarded,
                    modifyError, repeatedly,
-                   unsafeFromRight, unsafeFromJust
+                   unsafeFromRight, unsafeFromJust,
+                   first, second
                   ) where
 
 import Data.String.CodeUnits (fromCharArray)
 import Data.List (List(..), (:))
 import Data.List (toUnfoldable) as List
+import Data.Tuple (Tuple(..))
 import Data.Foldable (class Foldable, foldr)
 import Data.Unfoldable (class Unfoldable, replicate)
 import Data.Either (Either(..), either)
@@ -67,3 +69,13 @@ unsafeFromRight = either unsafeThrow identity
 
 unsafeFromJust :: forall a. Maybe a -> a
 unsafeFromJust = maybe' (\_ -> unsafeThrow "unsafeFromJust: Nothing") identity
+
+-- first and second are in purescript-profunctors, and I'm not pulling
+-- that whole dependency for two functions. Remove these if we need
+-- that package for something else.
+
+first :: forall a a' b. (a -> a') -> Tuple a b -> Tuple a' b
+first f (Tuple a b) = Tuple (f a) b
+
+second :: forall a b b' c. (b -> b') -> Tuple a b -> Tuple a b'
+second f (Tuple a b) = Tuple a (f b)

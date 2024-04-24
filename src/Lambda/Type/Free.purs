@@ -88,8 +88,8 @@ relationify (TArrow a b) = do
     pure $ ground $ rForall a1 aLeft $ rForall a2 aRight $
                       runRelation ra (Var a1) (Var a2) `rImplies`
                         mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
---relationify (TContextArrow _ _) =
---    unsafeThrow "Not supported yet"
+relationify (TContextArrow _ _) =
+    unsafeThrow "Not supported yet" -- /////
 relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do

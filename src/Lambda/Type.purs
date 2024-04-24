@@ -19,13 +19,15 @@ module Lambda.Type(
                    functionNames, suggestedVariableName
                   ) where
 
-import Lambda.PrettyShow (class PrettyShow, parenthesizeIf)
+import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
+import Lambda.Util (first)
 import Lambda.Util.InfiniteList (InfiniteList)
 import Lambda.Monad.Names (interspersedStrings, freshStrings)
 
 import Prelude
 import Data.List (List(..), (:), singleton, null, filter, nub)
-import Data.Foldable (foldr)
+import Data.Tuple (Tuple(..))
+import Data.Foldable (foldr, intercalate, length)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.NonEmpty ((:|))
@@ -39,7 +41,7 @@ data TType = TVar String
            | TGround String
            | TApp TType TType
            | TArrow TType TType
---           | TContextArrow TType TType
+           | TContextArrow TType TType
            | TForall String TType
 
 derive instance Eq TType
@@ -60,7 +62,7 @@ substitute x t (TVar y) | x == y = t
 substitute _ _ (TGround g) = TGround g
 substitute x t (TArrow t1 t2) = TArrow (substitute x t t1) (substitute x t t2)
 substitute x t (TApp t1 t2) = TApp (substitute x t t1) (substitute x t t2)
---substitute x t (TContextArrow t1 t2) = TContextArrow (substitute x t t1) (substitute x t t2)
+substitute x t (TContextArrow t1 t2) = TContextArrow (substitute x t t1) (substitute x t t2)
 substitute x t (TForall y t1) | x == y = TForall y t1
                               | otherwise = TForall y (substitute x t t1)
 
@@ -69,7 +71,7 @@ freeVariables (TVar x) = singleton x
 freeVariables (TGround _) = Nil
 freeVariables (TArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
 freeVariables (TApp t1 t2) = nub $ freeVariables t1 <> freeVariables t2
---freeVariables (TContextArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
+freeVariables (TContextArrow t1 t2) = nub $ freeVariables t1 <> freeVariables t2
 freeVariables (TForall x t) = filter (_ /= x) $ freeVariables t
 
 isClosed :: TType -> Boolean
@@ -138,13 +140,22 @@ prettyShowPrec n (TArrow left right) =
     let left' = prettyShowPrec arrowLeftPrecedence left
         right' = prettyShowPrec arrowRightPrecedence right in
     parenthesizeIf (n >= arrowLeftPrecedence) $ left' <> " -> " <> right'
---prettyShowPrec n (TContextArrow left right) =
---    let left' = prettyShowPrec arrowLeftPrecedence left
---        right' = prettyShowPrec arrowRightPrecedence right in
---    parenthesizeIf (n >= arrowLeftPrecedence) $ left' <> " => " <> right'
+prettyShowPrec n (TContextArrow left right) =
+    parenthesizeIf (n >= arrowLeftPrecedence) $ prettyShowContexts left right
 prettyShowPrec n (TForall v x) =
     let x' = prettyShowPrec forallPrecedence x in
     parenthesizeIf (n >= arrowLeftPrecedence) $ "∀ " <> v <> ". " <> x'
+
+prettyShowContexts :: TType -> TType -> String
+prettyShowContexts left right =
+    let Tuple allContexts right' = first (left :| _) $ collectContexts right
+        leftHandSide = parenthesizeIf (length allContexts > 1) $ intercalate ", " $ map prettyShow allContexts
+        rightHandSide = prettyShow right' in
+    leftHandSide <> " => " <> rightHandSide
+
+collectContexts :: TType -> Tuple (List TType) TType
+collectContexts (TContextArrow left right) = first (left : _) $ collectContexts right
+collectContexts t = Tuple Nil t
 
 functionNames :: InfiniteList String
 functionNames = interspersedStrings ("f" :| "g" : "h" : Nil)
@@ -158,17 +169,17 @@ suggestedVariableName groundNames = go
           go (TGround s) = groundNames s
           go (TApp left _) = go left
           go (TArrow _ _) = functionNames
-          --go (TContextArrow _ rhs) = suggestedVariableName rhs
+          go (TContextArrow _ rhs) = go rhs
           go (TForall _ t) = go t
 
 genTType :: Gen TType
 genTType = genTType'
     where genTType'' size
-              | size > 1 = resize (_ - 1) (oneOf (genArrow :| {- genContextArrow : -} genForall : Nil))
+              | size > 1 = resize (_ - 1) (oneOf (genArrow :| genContextArrow : genForall : Nil))
               | otherwise = genVar `choose` genGround
           genTType' = sized \size -> genTType'' size
           genArrow = defer \_ -> lift2 TArrow genTType' genTType'
---          genContextArrow = defer \_ -> lift2 TContextArrow genTType' genTType'
+          genContextArrow = defer \_ -> lift2 TContextArrow genTType' genTType'
           genForall = defer \_ -> lift2 TForall arbitrary genTType'
           genVar = defer \_ -> TVar <$> arbitrary
           genGround = defer \_ -> TGround <$> arbitrary
