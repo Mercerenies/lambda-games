@@ -1,13 +1,14 @@
 
 module Lambda.Type.Typeclass(
                               TypeclassBody(..), TypeclassFunction(..),
-                              WithContexts(..), expectGroundTy
+                              WithContexts(..), expectGroundTy, expectGroundConstraint
                              ) where
 
 import Lambda.Type (TType)
 import Lambda.Type.Kind (GroundKind(..))
 import Lambda.Type.Functions (Lambda, class GroundKindInferrable, getGroundKind, expectGround)
 import Lambda.Type.Error (class FromKindError)
+import Lambda.Type.Relation (Relation)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
@@ -44,11 +45,21 @@ instance GroundKindInferrable r => GroundKindInferrable (WithContexts r) where
 expectGroundTy :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
                   Lambda m (WithContexts r) -> m r
 expectGroundTy lam = unwrapGround <$> expectGround GType lam
-    where -- This is safe, because we know (per the typeclass instance
-          -- above that is owned by this module) that GType can never
-          -- belong to a value using constructor Context. If we decide
-          -- to write the other assertion function (which would return
-          -- `m TypeclassBody`), then the same assertion is NOT safe,
-          -- as the underlying type r might return GConstraint.
+    where -- Safety: This is safe, because we know (per the typeclass
+          -- instance above that is owned by this module) that GType
+          -- can never belong to a value using constructor Context.
           unwrapGround (NonContext r) = r
           unwrapGround (Context _) = unsafeThrow "expectGroundTy: unexpected context"
+
+expectGroundConstraint :: forall e m. FromKindError e => MonadError e m =>
+                          Lambda m (WithContexts Relation) -> m TypeclassBody
+expectGroundConstraint = map unwrapConstraint <<< expectGround GConstraint
+    where -- Safety: This is safe, because the Relation type (as a
+          -- GroundTypeInferrable) will always give GType, not
+          -- GConstraint. So anything of kind GConstraint must be a
+          -- Context by progress of elimination. Note that this is
+          -- only true for Relation, not arbitrary
+          -- GroundKindInferrable r => r, so we restrict
+          -- expectGroundConstraint's signature appropriately.
+          unwrapConstraint (Context typeclass) = typeclass
+          unwrapConstraint (NonContext _) = unsafeThrow "expectGroundConstraint: NonContext"

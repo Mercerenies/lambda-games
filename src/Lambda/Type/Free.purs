@@ -20,7 +20,8 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
-import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..), expectGroundTy)
+import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..),
+                              expectGroundTy, expectGroundConstraint)
 import Lambda.Type.Kind (GroundKind(..))
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..), class FromKindError)
@@ -49,12 +50,6 @@ import Prelude
 
 appSection :: Term -> Term
 appSection x = OperatorSectionLeft "$" x
-
-expectGroundConstraint :: forall e m. FromKindError e => MonadError e m =>
-                          Lambda m (WithContexts Relation) -> m TypeclassBody
-expectGroundConstraint = map unwrapConstraint <<< expectGround GConstraint
-    where unwrapConstraint (Context typeclass) = typeclass
-          unwrapConstraint (NonContext _) = unsafeThrow "expectGroundConstraint: NonContext" -- Safety: We just checked the kind, and no values of concrete type Relation will ever have ground kind equal to GConstraint
 
 ground :: forall m. Relation -> Lambda m (WithContexts Relation)
 ground = Ground <<< NonContext
