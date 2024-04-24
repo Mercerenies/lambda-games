@@ -1,17 +1,17 @@
 
 module Lambda.Type.Typeclass(
-                              TypeclassBody(..), TypeclassFunction(..),
-                              WithContexts(..), expectGroundTy, expectGroundConstraint
+                              TypeclassBody, TypeclassFunction(..),
+                              WithContexts(..), expectGroundTy, expectGroundConstraint,
+                              toArray, singleton
                              ) where
 
-import Lambda.Type (TType)
+import Lambda.Type.Relation (Relation)
 import Lambda.Type.Kind (GroundKind(..))
 import Lambda.Type.Functions (Lambda, class GroundKindInferrable, class NeverConstraint, getGroundKind, expectGround)
 import Lambda.Type.Error (class FromKindError)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
-import Data.Show.Generic (genericShow)
 import Effect.Exception.Unsafe (unsafeThrow)
 import Control.Monad.Error.Class (class MonadError)
 
@@ -19,20 +19,14 @@ newtype TypeclassBody = TypeclassBody (Array TypeclassFunction)
 
 newtype TypeclassFunction = TypeclassFunction {
       methodName :: String, -- //// (TODO) support operators as a simplification somehow
-      methodType :: TType
+      methodType :: Relation
     }
 
-derive instance Eq TypeclassBody
 derive instance Generic TypeclassBody _
+derive newtype instance Semigroup TypeclassBody
+derive newtype instance Monoid TypeclassBody
 
-instance Show TypeclassBody where
-    show x = genericShow x
-
-derive instance Eq TypeclassFunction
 derive instance Generic TypeclassFunction _
-
-instance Show TypeclassFunction where
-    show x = genericShow x
 
 -- Adds support for constraint kinds to an existing kind system.
 data WithContexts r = NonContext r | Context TypeclassBody
@@ -62,3 +56,9 @@ expectGroundConstraint = map unwrapConstraint <<< expectGround GConstraint
           -- the wrong layer, for instance.
           unwrapConstraint (Context typeclass) = typeclass
           unwrapConstraint (NonContext _) = unsafeThrow "expectGroundConstraint: NonContext"
+
+toArray :: TypeclassBody -> Array TypeclassFunction
+toArray (TypeclassBody a) = a
+
+singleton :: String -> Relation -> TypeclassBody
+singleton methodName methodType = TypeclassBody [TypeclassFunction { methodName, methodType }]

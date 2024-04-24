@@ -20,8 +20,9 @@ module Lambda.Type.Free(
                        ) where
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
-import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..),
+import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody, TypeclassFunction(..),
                               expectGroundTy, expectGroundConstraint)
+import Lambda.Type.Typeclass (toArray) as Typeclass
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
 import Lambda.Type.Functions (Lambda(..), assertKind, getKind)
@@ -42,7 +43,6 @@ import Data.Tuple (Tuple(..))
 import Data.List (List)
 import Data.Either (Either)
 import Data.Foldable (foldr)
-import Data.Traversable (traverse)
 import Control.Monad.Error.Class (class MonadError, throwError)
 import Prelude
 
@@ -84,9 +84,10 @@ relationify (TArrow a b) = do
                       runRelation ra (Var a1) (Var a2) `rImplies`
                         mapTerms (App (appSection (Var a1))) (App (appSection (Var a2))) rb
 relationify (TContextArrow ctx b) = do
-  rctx <- relationify ctx >>= expectGroundConstraint >>= computeTypeclassAssumptions
+  rctx <- relationify ctx >>= expectGroundConstraint
+  let rctx' = computeTypeclassAssumptions rctx
   rb <- relationify b >>= expectGroundTy
-  pure $ ground $ foldr rImplies rb rctx
+  pure $ ground $ foldr rImplies rb rctx'
 relationify (TForall x body) = do
   withFreshName2 (freshStrings x) \x1 x2 -> do
     withFreshName functionNames \f -> do
@@ -95,13 +96,11 @@ relationify (TForall x body) = do
       pure $ ground $ rForall x1 (TVar "Type") $ rForall x2 (TVar "Type") $
                         rForall f (TVar x1 `TArrow` TVar x2) $ innerRelation
 
-computeTypeclassAssumptions :: forall m. MonadError TypeError m =>
-                               TypeclassBody -> LambdaContextT m (Array Predicate)
-computeTypeclassAssumptions (TypeclassBody functions) = traverse computeAssumption functions
-    where computeAssumption :: TypeclassFunction -> LambdaContextT m Predicate
-          computeAssumption (TypeclassFunction { methodName, methodType }) = ado
-            methodRelation <- relationify methodType >>= expectGroundTy
-            in runRelation methodRelation (Var methodName) (Var methodName)
+computeTypeclassAssumptions :: TypeclassBody -> Array Predicate
+computeTypeclassAssumptions = map computeAssumption <<< Typeclass.toArray
+    where computeAssumption :: TypeclassFunction -> Predicate
+          computeAssumption (TypeclassFunction { methodName, methodType }) =
+              runRelation methodType (Var methodName) (Var methodName)
 
 newtype FreeTheoremOptions a = FreeTheoremOptions {
       simplifier :: Predicate -> Predicate,
