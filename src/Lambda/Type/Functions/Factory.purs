@@ -14,7 +14,8 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions.Factory(
-                                     lambda0, lambda1, lambda2, lambda3, lambda4, lambda5
+                                     lambda0, lambda1, lambda2, lambda3, lambda4, lambda5,
+                                     lambdaCtx1
                                     ) where
 
 -- Helpers for producing Lambdas of various function types.
@@ -23,7 +24,7 @@ import Lambda.Type.Functions (LambdaF(..), TaggedLambda, TaggedLambdaF(..), clas
                               class LambdaTag, tagApply)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.Kind (TKind(..), GroundKind(..))
-import Lambda.Type.Typeclass (WithContexts, expectGroundTy)
+import Lambda.Type.Typeclass (WithContexts, expectGroundTy, TypeclassBody)
 import Lambda.Recursion (Mu(..))
 
 import Prelude
@@ -31,35 +32,43 @@ import Safe.Coerce (coerce)
 import Type.Proxy (Proxy(..))
 import Control.Monad.Error.Class (class MonadError)
 
--- Helper for producing lambdas of kind k
+-- Helper for producing lambdas of kind Type
 lambda0 :: forall e m r t. FromKindError e => MonadError e m => GroundKindInferrable r => LambdaTag t =>
            t -> WithContexts r -> TaggedLambda t m (WithContexts r)
 lambda0 t f = monoLambda t withContextsLambdaArgs $ mono f
 
--- Helper for producing lambdas of kind (Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type)
 lambda1 :: forall e m r t. FromKindError e => MonadError e m => GroundKindInferrable r => LambdaTag t =>
            t -> (r -> WithContexts r) -> TaggedLambda t m (WithContexts r)
 lambda1 t f = monoLambda t withContextsLambdaArgs \a -> mono (f a)
 
--- Helper for producing lambdas of kind (Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type)
 lambda2 :: forall e m r t. FromKindError e => MonadError e m => GroundKindInferrable r => LambdaTag t =>
            t -> (r -> r -> WithContexts r) -> TaggedLambda t m (WithContexts r)
 lambda2 t f = monoLambda t withContextsLambdaArgs \a b -> mono (f a b)
 
--- Helper for producing lambdas of kind (Type -> Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type)
 lambda3 :: forall e m r t. FromKindError e => MonadError e m => GroundKindInferrable r => LambdaTag t =>
            t -> (r -> r -> r -> WithContexts r) -> TaggedLambda t m (WithContexts r)
 lambda3 t f = monoLambda t withContextsLambdaArgs \a b c -> mono (f a b c)
 
--- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type)
 lambda4 :: forall e m r t. FromKindError e => MonadError e m => GroundKindInferrable r => LambdaTag t =>
            t -> (r -> r -> r -> r -> WithContexts r) -> TaggedLambda t m (WithContexts r)
 lambda4 t f = monoLambda t withContextsLambdaArgs \a b c d -> mono (f a b c d)
 
--- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> Type)
 lambda5 :: forall e m r t. FromKindError e => MonadError e m => GroundKindInferrable r => LambdaTag t =>
            t -> (r -> r -> r -> r -> r -> WithContexts r) -> TaggedLambda t m (WithContexts r)
 lambda5 t f = monoLambda t withContextsLambdaArgs \a b c d e -> mono (f a b c d e)
+
+-- Helper for producing lambdas of kind (Type -> Constraint)
+lambdaCtx1 :: forall e m r t. FromKindError e => MonadError e m => GroundKindInferrable r => LambdaTag t =>
+           t -> (t -> WithContexts r) -> TaggedLambda t m (WithContexts r)
+lambdaCtx1 t f = TaggedLambdaF t $ Function { domain: Ty GType, codomain: Ty GConstraint, body }
+    where body (Mu (TaggedLambdaF t' a)) = ado
+            _ <- expectGroundTy a -- Assert that the value is of the correct kind
+            in Mu (TaggedLambdaF (tagApply t t') (Ground (f t')))
 
 -- Helper for producing lambdas which take arbitrary numbers of
 -- arguments, all of which are of kind Type. e.g. (Type -> Type),

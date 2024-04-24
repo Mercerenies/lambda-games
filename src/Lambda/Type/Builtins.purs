@@ -172,7 +172,7 @@ unusedNameStream :: InfiniteList String
 unusedNameStream = freshStrings "UNUSED_VARIABLE"
 
 --semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
---                 Lambda m (WithContexts Relation)
+--                 TaggedLambda m (WithContexts Relation)
 --semigroupType = lambda1 \ra -> 
 
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
