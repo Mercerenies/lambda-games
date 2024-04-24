@@ -14,7 +14,8 @@
 -- along with Lambdagames. If not, see
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions.Factory(
-                                     lambda0, lambda1, lambda2, lambda3, lambda4, lambda5
+                                     lambda0, lambda1, lambda2, lambda3, lambda4, lambda5,
+                                     lambda1Ctx
                                     ) where
 
 -- Helpers for producing Lambdas of various function types.
@@ -29,35 +30,40 @@ import Safe.Coerce (coerce)
 import Type.Proxy (Proxy(..))
 import Control.Monad.Error.Class (class MonadError)
 
--- Helper for producing lambdas of kind k
+-- Helper for producing lambdas of kind Type
 lambda0 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
            WithContexts m r -> Lambda m (WithContexts m r)
-lambda0 f = monoLambda withContextsLambdaArgs $ mono f
+lambda0 f = monoLambda (withContextsLambdaArgs GType) $ mono f
 
--- Helper for producing lambdas of kind (Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type)
 lambda1 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
            (r -> WithContexts m r) -> Lambda m (WithContexts m r)
-lambda1 f = monoLambda withContextsLambdaArgs \a -> mono (f a)
+lambda1 f = monoLambda (withContextsLambdaArgs GType) \a -> mono (f a)
 
--- Helper for producing lambdas of kind (Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type)
 lambda2 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
            (r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
-lambda2 f = monoLambda withContextsLambdaArgs \a b -> mono (f a b)
+lambda2 f = monoLambda (withContextsLambdaArgs GType) \a b -> mono (f a b)
 
--- Helper for producing lambdas of kind (Type -> Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type)
 lambda3 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
            (r -> r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
-lambda3 f = monoLambda withContextsLambdaArgs \a b c -> mono (f a b c)
+lambda3 f = monoLambda (withContextsLambdaArgs GType) \a b c -> mono (f a b c)
 
--- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type)
 lambda4 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
            (r -> r -> r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
-lambda4 f = monoLambda withContextsLambdaArgs \a b c d -> mono (f a b c d)
+lambda4 f = monoLambda (withContextsLambdaArgs GType) \a b c d -> mono (f a b c d)
 
--- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> k)
+-- Helper for producing lambdas of kind (Type -> Type -> Type -> Type -> Type -> Type)
 lambda5 :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
            (r -> r -> r -> r -> r -> WithContexts m r) -> Lambda m (WithContexts m r)
-lambda5 f = monoLambda withContextsLambdaArgs \a b c d e -> mono (f a b c d e)
+lambda5 f = monoLambda (withContextsLambdaArgs GType) \a b c d e -> mono (f a b c d e)
+
+-- Helper for producing lambdas of kind (Type -> Constraint)
+lambda1Ctx :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
+           (r -> WithContexts m r) -> Lambda m (WithContexts m r)
+lambda1Ctx f = monoLambda (withContextsLambdaArgs GConstraint) \a -> mono (f a)
 
 -- Helper for producing lambdas which take arbitrary numbers of
 -- arguments, all of which are of kind Type. e.g. (Type -> Type),
@@ -72,28 +78,30 @@ mono :: forall r. r -> Mono r
 mono = coerce
 
 type LambdaArgs m r s = {
-      extractor :: Lambda m r -> m s
+      extractor :: Lambda m r -> m s,
+      groundKind :: GroundKind
     }
 
 withContextsLambdaArgs :: forall e m r. FromKindError e => MonadError e m => GroundKindInferrable r =>
-                          LambdaArgs m (WithContexts m r) r
-withContextsLambdaArgs = {
-    extractor: expectGroundTy
+                          GroundKind -> LambdaArgs m (WithContexts m r) r
+withContextsLambdaArgs groundKind = {
+    extractor: expectGroundTy,
+    groundKind
   }
 
 class MonoLambda x r s | x -> r s where
     monoLambda :: forall e m. FromKindError e => MonadError e m => LambdaArgs m r s -> x -> Lambda m r
-    monoKind :: Proxy x -> TKind
+    monoKind :: forall m. Proxy x -> LambdaArgs m r s -> TKind
 
 instance MonoLambda (Mono r) r s where
     monoLambda _ = Ground <<< runMono
-    monoKind _ = Ty GType
+    monoKind _ args = Ty args.groundKind
 
 instance (GroundKindInferrable r, MonoLambda x r s) => MonoLambda (s -> x) r s where
     monoLambda args f =
         Function {
           domain: Ty GType,
-          codomain: monoKind (Proxy :: Proxy x),
+          codomain: monoKind (Proxy :: Proxy x) args,
           body: \a -> (monoLambda args <<< f) <$> args.extractor a
         }
-    monoKind _ = Ty GType `KArrow` monoKind (Proxy :: Proxy x)
+    monoKind _ args = Ty GType `KArrow` monoKind (Proxy :: Proxy x) args

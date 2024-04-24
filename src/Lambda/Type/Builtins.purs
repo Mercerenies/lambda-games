@@ -25,11 +25,12 @@ import Lambda.Type.Relation (Relation, identityRelation,
                              zipRelationsWith, zipRelationsWith3, zipRelationsWith4, zipRelationsWith5,
                              TermHole)
 import Lambda.Type.Functions (Lambda(..))
-import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5)
+import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5, lambda1Ctx)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
 import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody, TypeclassFunction(..))
 import Lambda.Type.Typeclass (singleton) as Typeclass
+import Lambda.Type.LambdaContext.FreeTheoremEnv (FreeTheoremEnv, withBinding)
 import Lambda.Term (Term(..), Pattern(..), allVariables)
 import Lambda.Util (toList)
 import Lambda.Util.InfiniteList (InfiniteList)
@@ -46,6 +47,7 @@ import Data.Tuple (Tuple(..))
 import Data.Bifunctor (bimap)
 import Data.Foldable (class Foldable, foldMap, length)
 import Control.Monad.Error.Class (class MonadError)
+import Control.Monad.Reader.Class (class MonadReader)
 import Prelude
 
 -- Names that we might introduce and assume are not being shadowed by
@@ -175,11 +177,15 @@ unusedNameStream = freshStrings "UNUSED_VARIABLE"
 semigroupMethod :: TType
 semigroupMethod = TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")
 
---semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+--semigroupType :: forall e m. FromKindError e => MonadNames String m =>
+--                 MonadError e m => MonadReader (FreeTheoremEnv m) m =>
 --                 Lambda m (WithContexts m Relation)
---semigroupType = lambda1 \ra -> 
+--semigroupType = lambda1Ctx \ra -> Typeclass.singleton "mappend" (body ra)
+--    where body ra relationify' = withBinding "a" ra relationify' 
 
-namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
+namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m =>
+                    MonadError e m => MonadReader (FreeTheoremEnv m) m =>
+                    Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Int" $ basicBuiltin (freshStrings "n"),
                     Tuple "Float" $ basicBuiltin (freshStrings "f"),
@@ -196,5 +202,7 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Either" eitherBuiltin
                    ]
 
-allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
+allBuiltins :: forall e m. FromKindError e => MonadNames String m =>
+               MonadError e m => MonadReader (FreeTheoremEnv m) m =>
+               BuiltinsMap m
 allBuiltins = BuiltinsMap (LookupMap.fromMap namedBuiltinsMap)
