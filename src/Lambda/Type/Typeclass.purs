@@ -6,9 +6,8 @@ module Lambda.Type.Typeclass(
 
 import Lambda.Type (TType)
 import Lambda.Type.Kind (GroundKind(..))
-import Lambda.Type.Functions (Lambda, class GroundKindInferrable, getGroundKind, expectGround)
+import Lambda.Type.Functions (Lambda, class GroundKindInferrable, class NeverConstraint, getGroundKind, expectGround)
 import Lambda.Type.Error (class FromKindError)
-import Lambda.Type.Relation (Relation)
 
 import Prelude
 import Data.Generic.Rep (class Generic)
@@ -51,15 +50,15 @@ expectGroundTy lam = unwrapGround <$> expectGround GType lam
           unwrapGround (NonContext r) = r
           unwrapGround (Context _) = unsafeThrow "expectGroundTy: unexpected context"
 
-expectGroundConstraint :: forall e m. FromKindError e => MonadError e m =>
-                          Lambda m (WithContexts Relation) -> m TypeclassBody
+expectGroundConstraint :: forall e m r. FromKindError e => MonadError e m => NeverConstraint r =>
+                          Lambda m (WithContexts r) -> m TypeclassBody
 expectGroundConstraint = map unwrapConstraint <<< expectGround GConstraint
-    where -- Safety: This is safe, because the Relation type (as a
-          -- GroundTypeInferrable) will always give GType, not
-          -- GConstraint. So anything of kind GConstraint must be a
-          -- Context by progress of elimination. Note that this is
-          -- only true for Relation, not arbitrary
-          -- GroundKindInferrable r => r, so we restrict
-          -- expectGroundConstraint's signature appropriately.
+    where -- Safety: This is safe, because a type which lawfully
+          -- implements NeverConstraint will never give GConstraint.
+          -- So anything of kind GConstraint must be a Context by
+          -- process of elimination. This prevents us from getting
+          -- into situations where we try to expectGroundConstraint on
+          -- a (WithContexts (WithContexts r)) and find a context at
+          -- the wrong layer, for instance.
           unwrapConstraint (Context typeclass) = typeclass
           unwrapConstraint (NonContext _) = unsafeThrow "expectGroundConstraint: NonContext"

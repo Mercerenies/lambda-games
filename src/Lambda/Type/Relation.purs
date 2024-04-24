@@ -35,7 +35,7 @@ import Lambda.Term (allVariables, substitute) as Term
 import Lambda.Type (TType(..))
 import Lambda.Type (substitute) as Type
 import Lambda.Type.Kind (GroundKind(..))
-import Lambda.Type.Functions (class GroundKindInferrable)
+import Lambda.Type.Functions (class GroundKindInferrable, class NeverConstraint)
 import Lambda.PrettyShow (prettyShow)
 import Lambda.Monad.Names (freshStrings)
 import Lambda.Util.InfiniteList (find) as InfiniteList
@@ -69,6 +69,8 @@ type Relation = PredicateZipper TermHole TermHole
 -- All PredicateZippers are assumed to be of kind Type.
 instance GroundKindInferrable (PredicateZipper a b) where
     getGroundKind _ = GType
+
+instance NeverConstraint (PredicateZipper a b)
 
 -- Note: The Bifunctor, Biapply, and Biapplicative instances might
 -- look a little weird, but they do obey the corresponding typeclass

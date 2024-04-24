@@ -22,7 +22,7 @@ module Lambda.Type.Functions.Factory(
 import Lambda.Type.Functions (Lambda(..), class GroundKindInferrable)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.Kind (TKind(..), GroundKind(..))
-import Lambda.Type.Typeclass (TypeclassBody, WithContexts, expectGroundTy, expectGroundConstraint)
+import Lambda.Type.Typeclass (WithContexts, expectGroundTy)
 
 import Prelude
 import Safe.Coerce (coerce)

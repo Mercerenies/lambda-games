@@ -22,10 +22,9 @@ module Lambda.Type.Free(
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
 import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody(..), TypeclassFunction(..),
                               expectGroundTy, expectGroundConstraint)
-import Lambda.Type.Kind (GroundKind(..))
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
-import Lambda.Type.Error (TypeError(..), class FromKindError)
-import Lambda.Type.Functions (Lambda(..), expectGround, assertKind, getKind)
+import Lambda.Type.Error (TypeError(..))
+import Lambda.Type.Functions (Lambda(..), assertKind, getKind)
 import Lambda.Type.BuiltinsMap (BuiltinsMap, Builtin(..))
 import Lambda.Type.LambdaContext.FreeTheoremEnv (FreeTheoremEnv, withBinding, lookupBinding, lookupBuiltin,
                                                  askVariableNamer, doBoundSubstitutionsLeft,
@@ -45,7 +44,6 @@ import Data.Either (Either)
 import Data.Foldable (foldr)
 import Data.Traversable (traverse)
 import Control.Monad.Error.Class (class MonadError, throwError)
-import Effect.Exception.Unsafe (unsafeThrow)
 import Prelude
 
 appSection :: Term -> Term

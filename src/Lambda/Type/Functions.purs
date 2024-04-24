@@ -15,7 +15,7 @@
 -- <https://www.gnu.org/licenses/>.
 module Lambda.Type.Functions(
                              Lambda(..), LambdaFunction,
-                             class GroundKindInferrable, getGroundKind,
+                             class GroundKindInferrable, class NeverConstraint, getGroundKind,
                              getKind, assertKind, expectFunction, expectGround
                             ) where
 
@@ -33,6 +33,11 @@ type LambdaFunction m r = Lambda m r -> m (Lambda m r)
 
 class GroundKindInferrable a where
     getGroundKind :: a -> GroundKind
+
+-- Typeclass with no methods. If a type implements NeverConstraint,
+-- then getGroundKind must NEVER return 'Ty GConstraint' for that
+-- type. This assertion is NOT checked.
+class GroundKindInferrable a <= NeverConstraint a
 
 getKind :: forall m r. GroundKindInferrable r => Lambda m r -> TKind
 getKind (Ground g) = Ty $ getGroundKind g
