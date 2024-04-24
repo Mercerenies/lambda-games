@@ -1,12 +1,14 @@
 
 module Lambda.Type.Typeclass(
                               TypeclassBody, TypeclassFunction(..),
+                              MethodName(..),
                               WithContexts(..),
                               expectGroundTy, expectGroundConstraint,
                               expectGroundTy', expectGroundConstraint',
-                              singleton, toArray
+                              singleton, toArray, methodNameToTerm
                              ) where
 
+import Lambda.Term (Term(..))
 import Lambda.Type (TType)
 import Lambda.Type.Kind (GroundKind(..))
 import Lambda.Type.Functions (LambdaF, TaggedLambdaF(..),
@@ -22,9 +24,11 @@ import Control.Monad.Error.Class (class MonadError)
 newtype TypeclassBody = TypeclassBody (Array TypeclassFunction)
 
 newtype TypeclassFunction = TypeclassFunction {
-      methodName :: String, -- //// (TODO) support operators as a simplification somehow
+      methodName :: MethodName,
       methodType :: TType
     }
+
+data MethodName = BasicName String | OperatorName String
 
 derive instance Eq TypeclassBody
 derive newtype instance Semigroup TypeclassBody
@@ -33,7 +37,13 @@ derive newtype instance Monoid TypeclassBody
 derive instance Eq TypeclassFunction
 derive instance Generic TypeclassFunction _
 
+derive instance Eq MethodName
+derive instance Generic MethodName _
+
 instance Show TypeclassFunction where
+    show x = genericShow x
+
+instance Show MethodName where
     show x = genericShow x
 
 -- Adds support for constraint kinds to an existing kind system.
@@ -76,8 +86,12 @@ expectGroundConstraint' :: forall e t m r a. FromKindError e => MonadError e m =
                            TaggedLambdaF t m (WithContexts r) a -> m TypeclassBody
 expectGroundConstraint' (TaggedLambdaF _ lam) = expectGroundConstraint lam
 
-singleton :: String -> TType -> TypeclassBody
+singleton :: MethodName -> TType -> TypeclassBody
 singleton methodName methodType = TypeclassBody [TypeclassFunction { methodName, methodType }]
 
 toArray :: TypeclassBody -> Array TypeclassFunction
 toArray (TypeclassBody functions) = functions
+
+methodNameToTerm :: MethodName -> Term
+methodNameToTerm (BasicName s) = Var s
+methodNameToTerm (OperatorName s) = OperatorFunction s

@@ -26,12 +26,13 @@ import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.List (List)
 import Data.Set (Set)
-import Data.Set (singleton, delete, insert, unions, member, difference) as Set
+import Data.Set (singleton, delete, insert, unions, member, difference, empty) as Set
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Foldable (intercalate)
 
 data Term = Var String
           | App Term Term
+          | OperatorFunction String
           | OperatorSectionLeft String Term
           | OperatorSectionRight Term String
           | OperatorApp Term String Term
@@ -69,6 +70,7 @@ substitute :: String -> Term -> Term -> Term
 substitute x t (Var x') | x == x' = t
                         | otherwise = Var x'
 substitute x t (App a b) = App (substitute x t a) (substitute x t b)
+substitute _ _ (OperatorFunction o) = OperatorFunction o
 substitute x t (OperatorSectionLeft o a) = OperatorSectionLeft o (substitute x t a)
 substitute x t (OperatorSectionRight a o) = OperatorSectionRight (substitute x t a) o
 substitute x t (OperatorApp lhs op rhs) = OperatorApp (substitute x t lhs) op (substitute x t rhs)
@@ -83,6 +85,7 @@ substitute x t (TupleTerm ys) = TupleTerm $ map (substitute x t) ys
 freeVariables :: Term -> Set String
 freeVariables (Var x) = Set.singleton x
 freeVariables (App a b) = freeVariables a <> freeVariables b
+freeVariables (OperatorFunction _) = Set.empty
 freeVariables (OperatorSectionLeft _ a) = freeVariables a
 freeVariables (OperatorSectionRight a _) = freeVariables a
 freeVariables (OperatorApp a _ b) = freeVariables a <> freeVariables b
@@ -93,6 +96,7 @@ freeVariables (TupleTerm xs) = Set.unions $ map freeVariables xs
 allVariables :: Term -> Set String
 allVariables (Var x) = Set.singleton x
 allVariables (App a b) = allVariables a <> allVariables b
+allVariables (OperatorFunction _) = Set.empty
 allVariables (OperatorSectionLeft _ a) = allVariables a
 allVariables (OperatorSectionRight a _) = allVariables a
 allVariables (OperatorApp a _ b) = allVariables a <> allVariables b
@@ -134,6 +138,8 @@ prettyShowPrec n (App left right) =
     let left' = prettyShowPrec appLeftPrecedence left
         right' = prettyShowPrec appRightPrecedence right in
     parenthesizeIf (n >= appRightPrecedence) $ left' <> " " <> right'
+prettyShowPrec _ (OperatorFunction o) =
+    parenthesizeIf true o
 prettyShowPrec _ (OperatorSectionLeft o a) =
     let a' = prettyShowPrec (operatorPrecedenceRight o) a in
     parenthesizeIf true $ o <> " " <> a'

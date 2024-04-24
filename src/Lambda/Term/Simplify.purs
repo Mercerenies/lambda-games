@@ -36,6 +36,7 @@ postOrderTraverseM f = go
     where go x = recurse x >>= f
           recurse (Var s) = pure (Var s)
           recurse (App t1 t2) = App <$> go t1 <*> go t2
+          recurse (OperatorFunction o) = pure (OperatorFunction o)
           recurse (OperatorSectionLeft s t) = OperatorSectionLeft s <$> go t
           recurse (OperatorSectionRight t s) = OperatorSectionRight <$> go t <*> pure s
           recurse (OperatorApp a o b) = OperatorApp <$> go a <*> pure o <*> go b

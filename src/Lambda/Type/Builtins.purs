@@ -28,7 +28,7 @@ import Lambda.Type.Functions (TaggedLambda, TaggedLambdaF(..), LambdaF(..))
 import Lambda.Type.Functions.Factory (lambda1, lambda2, lambda3, lambda4, lambda5, lambdaCtx1)
 import Lambda.Type.Error (class FromKindError)
 import Lambda.Type.BuiltinsMap (BuiltinsMap(..), Builtin(..))
-import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody)
+import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody, MethodName(..))
 import Lambda.Type.Typeclass (singleton) as Typeclass
 import Lambda.Term (Term(..), Pattern(..), allVariables)
 import Lambda.Util (toList)
@@ -173,7 +173,7 @@ unusedNameStream :: InfiniteList String
 unusedNameStream = freshStrings "UNUSED_VARIABLE"
 
 semigroupTypeclass :: TType -> TypeclassBody
-semigroupTypeclass a = Typeclass.singleton "mappend" (a `TArrow` (a `TArrow` a))
+semigroupTypeclass a = Typeclass.singleton (OperatorName "<>") (a `TArrow` (a `TArrow` a))
 
 semigroupType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
                  TaggedLambda TType m (WithContexts Relation)

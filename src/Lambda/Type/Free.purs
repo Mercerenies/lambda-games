@@ -21,7 +21,7 @@ module Lambda.Type.Free(
 
 import Lambda.Type (TType(..), suggestedVariableName, functionNames)
 import Lambda.Type.Typeclass (WithContexts(..), TypeclassBody, TypeclassFunction(..),
-                              expectGroundTy', expectGroundConstraint')
+                              expectGroundTy', expectGroundConstraint', methodNameToTerm)
 import Lambda.Type.Typeclass (toArray) as Typeclass
 import Lambda.Type.Relation (Relation, identityRelation, rForall, rImplies, runRelation, mapTerms)
 import Lambda.Type.Error (TypeError(..))
@@ -104,7 +104,7 @@ computeTypeclassAssumptions functions = traverse computeAssumption (Typeclass.to
     where computeAssumption :: TypeclassFunction -> LambdaContextT m Predicate
           computeAssumption (TypeclassFunction { methodName, methodType }) = ado
             methodRelation <- relationify methodType >>= expectGroundTy'
-            in runRelation methodRelation (Var methodName) (Var methodName)
+            in runRelation methodRelation (methodNameToTerm methodName) (methodNameToTerm methodName)
 
 newtype FreeTheoremOptions a = FreeTheoremOptions {
       simplifier :: Predicate -> Predicate,
