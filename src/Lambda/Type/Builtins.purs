@@ -228,6 +228,26 @@ eqBuiltin = Builtin {
               nameStream: unusedNameStream
             }
 
+-- Note: We don't use the Eq superclass for Ord. A lawful instance of
+-- Ord (that is, an Ord instance which is a valid total ordering,
+-- mathematically) can have its free theorem described fully in terms
+-- of (<=). So we state the free theorem optimistically, in terms of
+-- (<=) alone. We could have equivalently done so in terms of
+-- `compare`, but I think (<=) makes more readable theorems.
+
+ordTypeclass :: TType -> TypeclassBody
+ordTypeclass a = Typeclass.singleton (OperatorName "<=") (a `TArrow` (a `TArrow` TGround "Boolean"))
+
+ordType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+           TaggedLambda TType m (WithContexts Relation)
+ordType = lambdaCtx1 (TGround "Ord") \ta -> Context $ ordTypeclass ta
+
+ordBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+ordBuiltin = Builtin {
+               relation: ordType,
+               nameStream: unusedNameStream
+             }
+
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Int" $ basicBuiltin (TGround "Int") (freshStrings "n"),
@@ -246,7 +266,8 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Either" eitherBuiltin,
                     Tuple "Semigroup" semigroupBuiltin,
                     Tuple "Monoid" monoidBuiltin,
-                    Tuple "Eq" eqBuiltin
+                    Tuple "Eq" eqBuiltin,
+                    Tuple "Ord" ordBuiltin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m

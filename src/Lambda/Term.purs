@@ -137,6 +137,7 @@ operatorPrecedences "$" = infixr' 0 -- in Prelude
 operatorPrecedences "+++" = infixr' 2 -- in Control.Arrow
 operatorPrecedences "***" = infixr' 3 -- in Control.Arrow
 operatorPrecedences "==" = infix' 4 -- in Prelude
+operatorPrecedences "<=" = infix' 4 -- in Prelude
 operatorPrecedences "<>" = infixr' 6 -- in Prelude
 operatorPrecedences _ = infixl' 9 -- the default fixity
 
