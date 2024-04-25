@@ -27,7 +27,6 @@ import Data.Show.Generic (genericShow)
 import Data.List (List)
 import Data.Set (Set)
 import Data.Set (singleton, delete, insert, unions, member, difference, empty) as Set
-import Data.Tuple (Tuple(..), fst, snd)
 import Data.Foldable (intercalate)
 
 data Term = Var String
@@ -113,25 +112,32 @@ appLeftPrecedence = 100
 appRightPrecedence :: Int
 appRightPrecedence = 201
 
--- Operators known to our runtime. If Haskell defines the precedence
--- as x, we define the operator precedence to be 2 * x on the side we
--- associate and 2 * x + 1 on the side we don't, so that we can get
--- the parentheses correct.
-operatorPrecedences :: String -> Tuple Int Int
-operatorPrecedences "$" = Tuple 1 0 -- infixr 0 in Prelude
-operatorPrecedences "+++" = Tuple 5 4 -- infixr 2 in Control.Arrow
-operatorPrecedences "***" = Tuple 7 6 -- infixr 3 in Control.Arrow
-operatorPrecedences "<>" = Tuple 13 12 -- Infixr 6 in Prelude
-operatorPrecedences _ = Tuple 18 19 -- infixl 9 is the default fixity
+-- Operators known to our runtime.
+--
+-- Our convention:
+--
+-- If Haskell defines infixl N, we define { left: 2 N, assoc: 2 N + 1, right: 2 N + 1 }.
+--
+-- If Haskell defines infixr N, we define { left: 2 N + 1, assoc: 2 N + 1, right: 2 N }.
+--
+-- If Haskell defines infix N, we define { left: 2 N + 1, assoc: 2 N + 1, right: 2 N + 1 }.
+type Fixity = { left :: Int, assoc :: Int, right :: Int }
 
-operatorPrecedenceLeft :: String -> Int
-operatorPrecedenceLeft = fst <<< operatorPrecedences
+infixl' :: Int -> Fixity
+infixl' x = { left: 2 * x, assoc: 2 * x + 1, right: 2 * x + 1 }
 
-operatorPrecedenceRight :: String -> Int
-operatorPrecedenceRight = snd <<< operatorPrecedences
+infixr' :: Int -> Fixity
+infixr' x = { left: 2 * x + 1, assoc: 2 * x + 1, right: 2 * x }
 
-operatorPrecedenceMax :: String -> Int
-operatorPrecedenceMax s = max (operatorPrecedenceLeft s) (operatorPrecedenceRight s)
+infix' :: Int -> Fixity
+infix' x = { left: 2 * x + 1, assoc: 2 * x + 1, right: 2 * x + 1 }
+
+operatorPrecedences :: String -> Fixity
+operatorPrecedences "$" = infixr' 0 -- in Prelude
+operatorPrecedences "+++" = infixr' 2 -- in Control.Arrow
+operatorPrecedences "***" = infixr' 3 -- in Control.Arrow
+operatorPrecedences "<>" = infixr' 6 -- in Prelude
+operatorPrecedences _ = infixl' 9 -- the default fixity
 
 prettyShowPrec :: Int -> Term -> String
 prettyShowPrec _ (Var x) = x
@@ -142,15 +148,18 @@ prettyShowPrec n (App left right) =
 prettyShowPrec _ (OperatorFunction o) =
     parenthesizeIf true o
 prettyShowPrec _ (OperatorSectionLeft o a) =
-    let a' = prettyShowPrec (operatorPrecedenceRight o) a in
+    let fixity = operatorPrecedences o
+        a' = prettyShowPrec fixity.right a in
     parenthesizeIf true $ o <> " " <> a'
 prettyShowPrec _ (OperatorSectionRight a o) =
-    let a' = prettyShowPrec (operatorPrecedenceLeft o) a in
+    let fixity = operatorPrecedences o
+        a' = prettyShowPrec fixity.left a in
     parenthesizeIf true $ a' <> " " <> o
 prettyShowPrec n (OperatorApp a o b) =
-    let a' = prettyShowPrec (operatorPrecedenceLeft o) a
-        b' = prettyShowPrec (operatorPrecedenceRight o) b in
-    parenthesizeIf (n >= operatorPrecedenceMax o) $ a' <> " " <> o <> " " <> b'
+    let fixity = operatorPrecedences o
+        a' = prettyShowPrec fixity.left a
+        b' = prettyShowPrec fixity.right b in
+    parenthesizeIf (n >= fixity.assoc) $ a' <> " " <> o <> " " <> b'
 prettyShowPrec n (Fn var body) =
     parenthesizeIf (n > defaultPrecedence) $ "\\" <> prettyShowLambdaTail (VarPattern var) body
 prettyShowPrec n (PatternFn pattern body) =
