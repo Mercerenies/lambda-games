@@ -20,7 +20,7 @@ module Lambda.Predicate(
 import Lambda.PrettyShow (class PrettyShow, prettyShow, parenthesizeIf)
 import Lambda.MathShow (class MathShow, Latex(..), texttt)
 import Lambda.MathShow (parenthesizeIf) as MathShow
-import Lambda.Term (Term)
+import Lambda.Term (Term(..))
 import Lambda.Term (substitute, allVariables) as Term
 import Lambda.Type (TType(..))
 
@@ -91,8 +91,16 @@ orPrecedence = 3
 andPrecedence :: Int
 andPrecedence = 4
 
+-- Just parenthesize operators, to be completely unambiguous.
+termNeedsParens :: Term -> Boolean
+termNeedsParens (OperatorApp _ _ _) = true
+termNeedsParens _ = false
+
 prettyShowPrec :: Int -> Predicate -> String
-prettyShowPrec _ (Equals a b) = prettyShow a <> " = " <> prettyShow b
+prettyShowPrec _ (Equals a b) =
+    let a' = parenthesizeIf (termNeedsParens a) $ prettyShow a
+        b' = parenthesizeIf (termNeedsParens b) $ prettyShow b in
+    a' <> " = " <> b'
 prettyShowPrec n (Implies lhs rhs) =
     let lhs' = prettyShowPrec impliesLeftPrecedence lhs
         rhs' = prettyShowPrec impliesRightPrecedence rhs in
@@ -127,7 +135,10 @@ prettyShowQuantifiedType t = parenthesizeIf (isComplex t) $ prettyShow t
           isComplex _ = false
 
 mathShowPrec :: Int -> Predicate -> Latex
-mathShowPrec _ (Equals a b) = texttt (prettyShow a) <> Latex " = " <> texttt (prettyShow b)
+mathShowPrec _ (Equals a b) =
+    let a' = MathShow.parenthesizeIf (termNeedsParens a) $ texttt (prettyShow a)
+        b' = MathShow.parenthesizeIf (termNeedsParens b) $ texttt (prettyShow b) in
+    a' <> Latex " = " <> b'
 mathShowPrec n (Implies lhs rhs) =
     let lhs' = mathShowPrec impliesLeftPrecedence lhs
         rhs' = mathShowPrec impliesRightPrecedence rhs in
