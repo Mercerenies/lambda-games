@@ -17,7 +17,7 @@ module Lambda.Type.Builtins(
                             reservedNames,
                             basicBuiltin, listBuiltin, tuple2Builtin, tuple3Builtin,
                             tuple4Builtin, tuple5Builtin, eitherBuiltin, semigroupBuiltin,
-                            monoidBuiltin,
+                            monoidBuiltin, eqBuiltin,
                             namedBuiltinsMap, allBuiltins
                            ) where
 
@@ -199,6 +199,19 @@ monoidBuiltin = Builtin {
                   nameStream: unusedNameStream
                 }
 
+eqTypeclass :: TType -> TypeclassBody
+eqTypeclass a = Typeclass.singleton (OperatorName "==") (a `TArrow` (a `TArrow` TGround "Boolean"))
+
+eqType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+          TaggedLambda TType m (WithContexts Relation)
+eqType = lambdaCtx1 (TGround "Eq") \ta -> Context $ eqTypeclass ta
+
+eqBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+eqBuiltin = Builtin {
+              relation: eqType,
+              nameStream: unusedNameStream
+            }
+
 namedBuiltinsMap :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Map String (Builtin m)
 namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Int" $ basicBuiltin (TGround "Int") (freshStrings "n"),
@@ -215,7 +228,8 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "Tuple5" tuple5Builtin,
                     Tuple "Either" eitherBuiltin,
                     Tuple "Semigroup" semigroupBuiltin,
-                    Tuple "Monoid" monoidBuiltin
+                    Tuple "Monoid" monoidBuiltin,
+                    Tuple "Eq" eqBuiltin
                    ]
 
 allBuiltins :: forall e m. FromKindError e => MonadNames String m => MonadError e m => BuiltinsMap m
