@@ -75,11 +75,14 @@ basicBuiltin ttype nameStream = Builtin {
                                   nameStream
                                 }
 
+-- Interesting note: `[a]` and `Maybe a` both have free theorems that
+-- can be stated the exact same way in terms of fmap.
+liftToFmap :: TermHole -> TermHole
+liftToFmap f = App (App (Var "fmap") (liftToLambda f))
+
 listType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
             TaggedLambda TType m (WithContexts Relation)
 listType = lambda1 (TGround "List") \r -> NonContext $ bimap liftToFmap liftToFmap r
-    where liftToFmap :: TermHole -> TermHole
-          liftToFmap f = App (App (Var "fmap") (liftToLambda f))
 
 listNames :: InfiniteList String
 listNames = interspersedStrings ("xs" :| "ys" : "zs" : "ws" : Nil)
@@ -89,6 +92,19 @@ listBuiltin = Builtin {
                 relation: listType,
                 nameStream: listNames
               }
+
+maybeType :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
+             TaggedLambda TType m (WithContexts Relation)
+maybeType = lambda1 (TGround "Maybe") \r -> NonContext $ bimap liftToFmap liftToFmap r
+
+maybeNames :: InfiniteList String
+maybeNames = interspersedStrings ("mx" :| "my" : "mz" : "mw" : Nil)
+
+maybeBuiltin :: forall e m. FromKindError e => MonadNames String m => MonadError e m => Builtin m
+maybeBuiltin = Builtin {
+                 relation: maybeType,
+                 nameStream: maybeNames
+               }
 
 tuple2Type :: forall e m. FromKindError e => MonadNames String m => MonadError e m =>
               TaggedLambda TType m (WithContexts Relation)
@@ -220,6 +236,7 @@ namedBuiltinsMap = Map.fromFoldable [
                     Tuple "String" $ basicBuiltin (TGround "String") (freshStrings "s"),
                     Tuple "Boolean" $ basicBuiltin (TGround "Boolean") (freshStrings "b"),
                     Tuple "List" listBuiltin,
+                    Tuple "Maybe" maybeBuiltin,
                     Tuple "Tuple0" $ basicBuiltin (TGround "Tuple0") (freshStrings "unit"),
                     Tuple "Void" $ basicBuiltin (TGround "Void") (freshStrings "void"),
                     Tuple "Tuple2" tuple2Builtin,
